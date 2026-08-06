@@ -1,0 +1,23 @@
+pms_code,name,hex,default_rack,default_bin,initial_status
+PMS-021,Blaze Orange,#FF6A13,Rack 1,Bin A2,in_use
+PMS-185,Race Red,#E4002B,Rack 2,Bin C4,full
+PMS-286,Royal Blue,#0033A0,Rack 3,Bin B1,empty
+PMS-102,Lemon Yellow,#F6D500,Rack 1,Bin A5,in_use
+PMS-354,Kelly Green,#00A651,Rack 2,Bin C1,full
+PMS-232,Hot Magenta,#EC0F8A,Rack 2,Bin C7,full
+PMS-2593,Grape Purple,#6B3FA0,Rack 3,Bin B6,empty
+PMS-BLACK,Press Black,#14181C,Rack 4,Bin D1,full
+PMS-WHITE,Opaque White,#EDEDED,Rack 4,Bin D2,empty
+PMS-2727,Sky Blue,#307FE2,Rack 3,Bin B2,full
+PMS-165,Safety Orange,#FE5000,Rack 1,Bin A3,in_use
+PMS-877,Silver Metallic,#8A8D8F,Rack 4,Bin D6,empty
+# ---------------------------------------------------------------------------
+# HOW TO USE:
+#   - Replace the sample rows above with your real PMS export.
+#   - Columns: pms_code (unique), name, hex (for the on-screen swatch),
+#     default_rack + default_bin (where the bucket lives), initial_status
+#     (full | in_use | empty).
+#   - If a color has multiple buckets, add one row per bucket (same pms_code,
+#     different rack/bin). hex may be left blank if unknown — Claude Code can
+#     look up an approximate hex per PMS code, but a verified hex is best.
+#   - Delete these comment lines (starting with #) before importing.
