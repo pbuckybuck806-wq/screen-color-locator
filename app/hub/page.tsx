@@ -18,10 +18,13 @@ export default function HubPage() {
   function openLocator() {
     if (diving) return;
     setDiving(true);
-    // No fixed delay: the overlay holds at full opacity until Next.js
-    // actually finishes navigating and swaps this page for /locator, so
-    // there's no window where Hub's own content could show through.
-    router.push("/locator");
+    // Give the reveal animation (image settle + caption, ~1.4s) room to
+    // actually play before swapping pages. This delay is safe against the
+    // original flash-back bug because the overlay itself no longer fades on
+    // its own timer (see globals.css) — it holds at full opacity for as long
+    // as Hub stays mounted, so if navigation ever takes longer than this
+    // delay, the overlay just keeps holding instead of exposing Hub.
+    setTimeout(() => router.push("/locator"), 1400);
   }
 
   function openPackage() {
