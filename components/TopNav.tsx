@@ -9,6 +9,12 @@ import type { Profile } from "@/lib/auth";
 export function TopNav({ profile }: { profile: Profile | null }) {
   const pathname = usePathname();
 
+  // Hub is the neutral chooser between this app and Package Help Desk — no
+  // nav chrome until you've actually picked a side.
+  if (pathname === "/hub") return null;
+
+  const onLocator = pathname.startsWith("/locator");
+
   return (
     <div className="topbar">
       <div className="brandmark">
@@ -19,12 +25,8 @@ export function TopNav({ profile }: { profile: Profile | null }) {
         </div>
       </div>
       <div className="navtabs" role="tablist">
-        <Link href="/hub" className={pathname === "/hub" ? "active" : ""}>
-          Hub
-        </Link>
-        <Link href="/locator" className={pathname.startsWith("/locator") ? "active" : ""}>
-          Locator
-        </Link>
+        <Link href="/hub">Hub</Link>
+        {profile && !onLocator && <Link href="/locator">Locator</Link>}
         {profile && (
           <Link href="/tech" className={pathname === "/tech" ? "active" : ""}>
             Tech tools

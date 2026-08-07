@@ -177,7 +177,7 @@ export function ScreenResultCard({
             autoFocus
             className="code"
             style={{ background: "var(--k)", border: "1px solid var(--cyan)", borderRadius: 10, color: "var(--paper)", padding: "13px 16px", fontSize: 14 }}
-            placeholder="Scan shelf barcode…"
+            placeholder="Scan shelf barcode…  e.g. SHLF-A-01"
             value={scanValue}
             onChange={(e) => setScanValue(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submitScan()}

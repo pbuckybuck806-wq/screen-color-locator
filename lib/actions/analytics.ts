@@ -58,7 +58,14 @@ export async function getScreensDashboard(): Promise<ScreensDashboard> {
   const supabase = await createSupabaseServerClient();
 
   const [onFloor, inProduction, activeSrRows, queueRows, washedRows, cartRows] = await Promise.all([
-    supabase.from("screen_status").select("*", { count: "exact", head: true }).eq("screen_status", "active").eq("derived_status", "on_shelf"),
+    // "On the floor" means actually placed on a shelf — not just "not checked
+    // out," which would otherwise include every never-logged blank screen.
+    supabase
+      .from("screen_status")
+      .select("*", { count: "exact", head: true })
+      .eq("screen_status", "active")
+      .eq("derived_status", "on_shelf")
+      .not("shelf_id", "is", null),
     supabase.from("screen_status").select("*", { count: "exact", head: true }).eq("screen_status", "active").eq("derived_status", "in_production"),
     supabase.from("separation_references").select("screen_id, use_count").eq("status", "active"),
     // Explicit, actionable wash queue — real SR codes, location, and why each is due.

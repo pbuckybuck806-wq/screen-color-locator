@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FloorDiveOverlay } from "@/components/FloorDiveOverlay";
 import { showToast } from "@/lib/toast";
 
@@ -9,10 +9,19 @@ export default function HubPage() {
   const router = useRouter();
   const [diving, setDiving] = useState(false);
 
+  // Warm the destination up front so the swap below has the best chance of
+  // being ready by the time the reveal animation would otherwise finish.
+  useEffect(() => {
+    router.prefetch("/locator");
+  }, [router]);
+
   function openLocator() {
     if (diving) return;
     setDiving(true);
-    setTimeout(() => router.push("/locator"), 1580);
+    // No fixed delay: the overlay holds at full opacity until Next.js
+    // actually finishes navigating and swaps this page for /locator, so
+    // there's no window where Hub's own content could show through.
+    router.push("/locator");
   }
 
   function openPackage() {

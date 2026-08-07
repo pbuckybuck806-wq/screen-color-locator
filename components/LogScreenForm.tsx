@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { logScreen, placeScreenByBarcode } from "@/lib/actions/screens";
 import { showToast } from "@/lib/toast";
 import type { SrType } from "@/lib/types";
@@ -21,9 +21,20 @@ export function LogScreenForm() {
   const [screenId, setScreenId] = useState<number | null>(null);
   const [barcode, setBarcode] = useState("");
   const [placedShelf, setPlacedShelf] = useState("");
+  const srCodeRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   function updateSr(i: number, patch: Partial<SrDraft>) {
     setSrs((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  }
+
+  // Scanners are keyboard-wedge devices — they type the code, then an Enter.
+  // Adding + focusing the next row here means a tech can keep scanning SR
+  // codes back-to-back with no mouse/Tab needed, matching how shelf-barcode
+  // scanning already works elsewhere in the app.
+  function addRow() {
+    const newIndex = srs.length;
+    setSrs((rs) => [...rs, emptySr()]);
+    requestAnimationFrame(() => srCodeRefs.current[newIndex]?.focus());
   }
 
   async function submitDetails() {
@@ -94,7 +105,7 @@ export function LogScreenForm() {
           autoFocus
           className="code"
           style={{ width: "100%", background: "var(--k)", border: "1px solid var(--cyan)", borderRadius: 10, color: "var(--paper)", padding: "13px 16px", fontSize: 14 }}
-          placeholder="Scan shelf barcode…"
+          placeholder="Scan shelf barcode…  e.g. SHLF-A-01"
           value={barcode}
           onChange={(e) => setBarcode(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submitPlacement()}
@@ -128,9 +139,15 @@ export function LogScreenForm() {
         {srs.map((r, i) => (
           <div className="ref-row" key={i} style={{ gap: 10, flexWrap: "wrap" }}>
             <input
+              ref={(el) => {
+                srCodeRefs.current[i] = el;
+              }}
               placeholder="SR code, e.g. SR-4521"
               value={r.srCode}
               onChange={(e) => updateSr(i, { srCode: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && r.srCode.trim()) addRow();
+              }}
               style={{ background: "transparent", border: "none", color: "var(--paper)", fontWeight: 600, flex: "1 1 140px" }}
             />
             <input
@@ -182,7 +199,7 @@ export function LogScreenForm() {
       </div>
 
       <div className="rc-actions">
-        <button className="btn-ghost" onClick={() => setSrs((rs) => [...rs, emptySr()])}>
+        <button className="btn-ghost" onClick={addRow}>
           + Add another reference
         </button>
         <button className="btn-primary" onClick={submitDetails} disabled={busy}>
