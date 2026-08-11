@@ -12,7 +12,8 @@ export default async function TechHubPage() {
     { href: "/analytics", idx: "05", title: "Analytics", desc: "Due-for-wash queue, cart capacity, ink levels, and freshness warnings.", tint: "locator" as const },
   ];
   if (profile.role === "admin") {
-    tiles.push({ href: "/settings", idx: "06", title: "Settings", desc: "Bucket types, fullness thresholds, approval code, freshness & wash thresholds.", tint: "pkg" as const });
+    tiles.push({ href: "/tech/manage-carts", idx: "06", title: "Manage carts", desc: "Edit slot counts, fix shelf barcodes, or force-delete a cart with approval.", tint: "locator" as const });
+    tiles.push({ href: "/settings", idx: "07", title: "Settings", desc: "Bucket types, fullness thresholds, approval code, freshness & wash thresholds.", tint: "pkg" as const });
   }
 
   return (

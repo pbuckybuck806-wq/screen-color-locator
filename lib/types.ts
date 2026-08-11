@@ -59,6 +59,21 @@ export type ColorSearchResult = {
   buckets: BucketRow[];
 };
 
+export type ShelfRow = {
+  shelfId: number;
+  position: number;
+  code: string;
+  barcode: string;
+  occupied: boolean;
+};
+
+export type CartWithShelves = {
+  cartId: number;
+  cartCode: string;
+  shelfCount: number;
+  shelves: ShelfRow[];
+};
+
 export type SettingsData = {
   unit: string;
   inkFreshnessMonths: number;

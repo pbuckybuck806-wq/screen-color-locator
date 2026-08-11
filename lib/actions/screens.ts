@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/actions/settings";
 import type { ScreenSearchResult, SrRow, SrType, WashReason, ActionResult } from "@/lib/types";
@@ -98,6 +99,7 @@ export async function checkoutSr(srId: number): Promise<ActionResult<ScreenSearc
   const { error } = await supabase.rpc("rpc_checkout_sr", { p_sr_id: srId });
   if (error) return { ok: false, error: error.message };
 
+  revalidatePath("/", "layout");
   const state = await loadScreenState(supabase, sr.screen_id);
   if (!state) return { ok: false, error: "Screen not found." };
   return { ok: true, data: state };
@@ -109,6 +111,7 @@ export async function returnScreenByBarcode(screenId: number, barcode: string): 
   const { error } = await supabase.rpc("rpc_return_screen", { p_screen_id: screenId, p_barcode: barcode });
   if (error) return { ok: false, error: error.message };
 
+  revalidatePath("/", "layout");
   const state = await loadScreenState(supabase, screenId);
   if (!state) return { ok: false, error: "Screen not found." };
   return { ok: true, data: state };
@@ -133,6 +136,7 @@ export async function logScreen(
   });
   if (error) return { ok: false, error: error.message };
 
+  revalidatePath("/", "layout");
   return { ok: true, data: { screenId: screenId as number } };
 }
 
@@ -146,6 +150,7 @@ export async function requestWash(srId: number): Promise<ActionResult<ScreenSear
   const { error } = await supabase.rpc("rpc_request_wash", { p_sr_id: srId });
   if (error) return { ok: false, error: error.message };
 
+  revalidatePath("/", "layout");
   const state = sr?.screen_id ? await loadScreenState(supabase, sr.screen_id) : null;
   return { ok: true, data: state };
 }
@@ -155,6 +160,7 @@ export async function placeScreenByBarcode(screenId: number, barcode: string): P
 
   const { error } = await supabase.rpc("rpc_place_screen", { p_screen_id: screenId, p_barcode: barcode });
   if (error) return { ok: false, error: error.message };
+  revalidatePath("/", "layout");
   return { ok: true, data: { placed: true } };
 }
 
@@ -168,6 +174,7 @@ export async function washSr(
   const { data: oldScreenId, error } = await supabase.rpc("rpc_wash_sr", { p_sr_id: srId, p_tag: tag, p_reason: reason ?? null });
   if (error) return { ok: false, error: error.message };
 
+  revalidatePath("/", "layout");
   const state = oldScreenId ? await loadScreenState(supabase, oldScreenId as number) : null;
   return { ok: true, data: state };
 }
@@ -184,5 +191,26 @@ export async function decommissionAndReassignScreen(
   });
   if (error) return { ok: false, error: error.message };
 
+  revalidatePath("/", "layout");
   return { ok: true, data: { movedCount: movedCount as number } };
+}
+
+export async function deleteSr(srId: number, approvalCode: string): Promise<ActionResult<{ deleted: true }>> {
+  const supabase = await createSupabaseServerClient();
+
+  const { error } = await supabase.rpc("rpc_admin_delete_sr", { p_sr_id: srId, p_approval_code: approvalCode });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/", "layout");
+  return { ok: true, data: { deleted: true } };
+}
+
+export async function deleteScreen(screenId: number, approvalCode: string): Promise<ActionResult<{ deleted: true }>> {
+  const supabase = await createSupabaseServerClient();
+
+  const { error } = await supabase.rpc("rpc_admin_delete_screen", { p_screen_id: screenId, p_approval_code: approvalCode });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/", "layout");
+  return { ok: true, data: { deleted: true } };
 }

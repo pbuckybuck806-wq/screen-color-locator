@@ -27,5 +27,12 @@ async function getSampleQueries() {
 export default async function LocatorPage() {
   const [profile, samples] = await Promise.all([getProfile(), getSampleQueries()]);
 
-  return <LocatorApp isTech={!!profile} screenSamples={samples.screenRefs} colorSamples={samples.colorSamples} />;
+  return (
+    <LocatorApp
+      isTech={!!profile}
+      isAdmin={profile?.role === "admin"}
+      screenSamples={samples.screenRefs}
+      colorSamples={samples.colorSamples}
+    />
+  );
 }

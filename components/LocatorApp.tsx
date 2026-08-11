@@ -4,7 +4,7 @@ import { useState } from "react";
 import { RegMark, BucketIcon } from "@/components/IconSymbols";
 import { ScreenResultCard } from "@/components/ScreenResultCard";
 import { ColorResultCard } from "@/components/ColorResultCard";
-import { searchScreenByRef, returnScreenByBarcode, checkoutSr, washSr, requestWash } from "@/lib/actions/screens";
+import { searchScreenByRef, returnScreenByBarcode, checkoutSr, washSr, requestWash, deleteSr, deleteScreen, lookupScreenByNumber } from "@/lib/actions/screens";
 import { searchColorByPms, markBucketStatus, addInk, weighBucket } from "@/lib/actions/paint";
 import { showToast } from "@/lib/toast";
 import type { ScreenSearchResult, ColorSearchResult, BucketStatus } from "@/lib/types";
@@ -31,10 +31,12 @@ const LEGEND: Record<Mode, [string, string][]> = {
 
 export function LocatorApp({
   isTech,
+  isAdmin,
   screenSamples,
   colorSamples,
 }: {
   isTech: boolean;
+  isAdmin: boolean;
   screenSamples: string[];
   colorSamples: { code: string; hex: string }[];
 }) {
@@ -120,6 +122,29 @@ export function LocatorApp({
       if (res.data) setStage({ kind: "screen", data: res.data });
       showToast("Queued for wash.");
     }
+  }
+
+  async function handleDeleteSr(srId: number, approvalCode: string) {
+    if (stage.kind !== "screen") return;
+    const screenNumber = stage.data.screen;
+    setBusy(true);
+    const res = await deleteSr(srId, approvalCode);
+    setBusy(false);
+    if (!res.ok) return showToast(res.error);
+    showToast("Reference deleted.");
+    const refreshed = await lookupScreenByNumber(screenNumber);
+    if (refreshed) setStage({ kind: "screen", data: refreshed });
+  }
+
+  async function handleDeleteScreen(approvalCode: string) {
+    if (stage.kind !== "screen") return;
+    setBusy(true);
+    const res = await deleteScreen(stage.data.screenId, approvalCode);
+    setBusy(false);
+    if (!res.ok) return showToast(res.error);
+    showToast(`Screen #${stage.data.screen} deleted.`);
+    setStage({ kind: "placeholder" });
+    setStageKey((k) => k + 1);
   }
 
   async function handleMark(bucketId: number, status: BucketStatus) {
@@ -254,10 +279,13 @@ export function LocatorApp({
               <ScreenResultCard
                 result={stage.data}
                 isTech={isTech}
+                isAdmin={isAdmin}
                 onCheckout={handleCheckout}
                 onReturn={handleReturn}
                 onWashSr={handleWashSr}
                 onRequestWash={handleRequestWash}
+                onDeleteSr={handleDeleteSr}
+                onDeleteScreen={handleDeleteScreen}
                 busy={busy}
               />
             </>

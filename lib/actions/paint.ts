@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/actions/settings";
 import { fullnessFor } from "@/lib/paintFullness";
@@ -108,6 +109,7 @@ export async function logColor(input: {
   });
   if (error) return { ok: false, error: error.message };
 
+  revalidatePath("/", "layout");
   return { ok: true, data: { colorId: colorId as number } };
 }
 
@@ -129,6 +131,7 @@ export async function addBucket(input: {
   });
   if (error) return { ok: false, error: error.message };
 
+  revalidatePath("/", "layout");
   const data = await loadColorState(supabase, input.colorId);
   if (!data) return { ok: false, error: "Color not found." };
   return { ok: true, data };
@@ -144,6 +147,7 @@ export async function addInk(bucketId: number, grams: number, jobRef?: string): 
   const { error } = await supabase.rpc("rpc_add_ink", { p_bucket_id: bucketId, p_grams: grams, p_job_ref: jobRef ?? null });
   if (error) return { ok: false, error: error.message };
 
+  revalidatePath("/", "layout");
   const data = await loadColorState(supabase, bucket.paint_color_id);
   if (!data) return { ok: false, error: "Color not found." };
   return { ok: true, data };
@@ -159,6 +163,7 @@ export async function weighBucket(bucketId: number, measuredWeight: number): Pro
   const { error } = await supabase.rpc("rpc_weigh_bucket", { p_bucket_id: bucketId, p_measured_weight: measuredWeight });
   if (error) return { ok: false, error: error.message };
 
+  revalidatePath("/", "layout");
   const data = await loadColorState(supabase, bucket.paint_color_id);
   if (!data) return { ok: false, error: "Color not found." };
   return { ok: true, data };
@@ -173,6 +178,7 @@ export async function markBucketStatus(bucketId: number, status: BucketStatus): 
   const { error } = await supabase.rpc("rpc_mark_bucket_status", { p_bucket_id: bucketId, p_status: status });
   if (error) return { ok: false, error: error.message };
 
+  revalidatePath("/", "layout");
   const data = await loadColorState(supabase, bucket.paint_color_id);
   if (!data) return { ok: false, error: "Color not found." };
   return { ok: true, data };

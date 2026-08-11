@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ActionResult, BucketType, SettingsData } from "@/lib/types";
 
@@ -55,6 +56,7 @@ export async function updateSettings(input: {
   });
   if (error) return { ok: false, error: error.message };
 
+  revalidatePath("/", "layout");
   return { ok: true, data: { saved: true } };
 }
 
@@ -76,5 +78,6 @@ export async function upsertBucketType(input: {
   });
   if (error) return { ok: false, error: error.message };
 
+  revalidatePath("/", "layout");
   return { ok: true, data: { id: data as number } };
 }

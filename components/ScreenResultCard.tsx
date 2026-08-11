@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { RegMark } from "@/components/IconSymbols";
+import { ApprovalDeletePrompt } from "@/components/ApprovalDeletePrompt";
 import type { ScreenSearchResult, SrRow } from "@/lib/types";
 
 const CHANNEL_VAR: Record<string, string> = {
@@ -26,19 +27,32 @@ function SrRowActions({
   sr,
   screenBusy,
   isTech,
+  isAdmin,
   onCheckout,
   onWashSr,
   onRequestWash,
+  onDeleteSr,
 }: {
   sr: SrRow;
   screenBusy: boolean;
   isTech: boolean;
+  isAdmin: boolean;
   onCheckout: (srId: number) => void;
   onWashSr: (srId: number, tag: "washed" | "decommissioned", reason?: string) => void;
   onRequestWash: (srId: number) => void;
+  onDeleteSr: (srId: number, approvalCode: string) => void;
 }) {
   const [washing, setWashing] = useState(false);
   const [reason, setReason] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  if (deleting) {
+    return (
+      <div style={{ marginLeft: "auto" }}>
+        <ApprovalDeletePrompt confirmLabel="Confirm delete reference" busy={screenBusy} onConfirm={(code) => onDeleteSr(sr.id, code)} onCancel={() => setDeleting(false)} />
+      </div>
+    );
+  }
 
   if (washing) {
     return (
@@ -81,6 +95,16 @@ function SrRowActions({
           Wash
         </button>
       )}
+      {isAdmin && (
+        <button
+          className="btn-ghost"
+          style={{ padding: "6px 12px", fontSize: 12.5, borderColor: "var(--magenta)", color: "var(--magenta)" }}
+          disabled={screenBusy}
+          onClick={() => setDeleting(true)}
+        >
+          Delete
+        </button>
+      )}
     </div>
   );
 }
@@ -88,22 +112,29 @@ function SrRowActions({
 export function ScreenResultCard({
   result,
   isTech,
+  isAdmin,
   onCheckout,
   onReturn,
   onWashSr,
   onRequestWash,
+  onDeleteSr,
+  onDeleteScreen,
   busy,
 }: {
   result: ScreenSearchResult;
   isTech: boolean;
+  isAdmin: boolean;
   onCheckout: (srId: number) => void;
   onReturn: (barcode: string) => void;
   onWashSr: (srId: number, tag: "washed" | "decommissioned", reason?: string) => void;
   onRequestWash: (srId: number) => void;
+  onDeleteSr: (srId: number, approvalCode: string) => void;
+  onDeleteScreen: (approvalCode: string) => void;
   busy: boolean;
 }) {
   const [scanning, setScanning] = useState(false);
   const [scanValue, setScanValue] = useState("");
+  const [deletingScreen, setDeletingScreen] = useState(false);
 
   const cardClass = result.status === "in_production" ? "prod" : "avail";
   const tagLabel = result.status === "in_production" ? "● In production" : "● On shelf";
@@ -156,7 +187,16 @@ export function ScreenResultCard({
                 {sr.useCount}× · {formatDate(sr.lastUsedAt)}
               </span>
               {sr.dueForWash && sr.washReason && <span className="rstate wait">{WASH_REASON_LABEL[sr.washReason]}</span>}
-              <SrRowActions sr={sr} screenBusy={busy} isTech={isTech} onCheckout={onCheckout} onWashSr={onWashSr} onRequestWash={onRequestWash} />
+              <SrRowActions
+                sr={sr}
+                screenBusy={busy}
+                isTech={isTech}
+                isAdmin={isAdmin}
+                onCheckout={onCheckout}
+                onWashSr={onWashSr}
+                onRequestWash={onRequestWash}
+                onDeleteSr={onDeleteSr}
+              />
             </div>
           ))}
         </div>
@@ -189,6 +229,23 @@ export function ScreenResultCard({
           </button>
         )}
       </div>
+
+      {isAdmin && (
+        <div className="rc-actions" style={{ marginTop: 10 }}>
+          {deletingScreen ? (
+            <ApprovalDeletePrompt confirmLabel="Confirm delete screen" busy={busy} onConfirm={onDeleteScreen} onCancel={() => setDeletingScreen(false)} />
+          ) : (
+            <button
+              className="btn-ghost"
+              style={{ borderColor: "var(--magenta)", color: "var(--magenta)" }}
+              disabled={busy}
+              onClick={() => setDeletingScreen(true)}
+            >
+              Delete this screen
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
