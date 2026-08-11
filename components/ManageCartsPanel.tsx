@@ -65,7 +65,7 @@ function ShelfBarcodeRow({ shelf }: { shelf: ShelfRow }) {
   );
 }
 
-function CartCard({ cart }: { cart: CartWithShelves }) {
+function CartCard({ cart, isAdmin }: { cart: CartWithShelves; isAdmin: boolean }) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
   const [shelfCount, setShelfCount] = useState(String(cart.shelfCount));
@@ -122,17 +122,18 @@ function CartCard({ cart }: { cart: CartWithShelves }) {
           Save slot count
         </button>
 
-        {deleting ? (
-          <ApprovalDeletePrompt confirmLabel="Confirm delete cart" busy={busy} onConfirm={confirmDelete} onCancel={() => setDeleting(false)} />
-        ) : (
-          <button
-            className="btn-ghost"
-            style={{ padding: "6px 12px", fontSize: 12.5, marginLeft: "auto", borderColor: "var(--magenta)", color: "var(--magenta)" }}
-            onClick={() => setDeleting(true)}
-          >
-            Delete cart
-          </button>
-        )}
+        {isAdmin &&
+          (deleting ? (
+            <ApprovalDeletePrompt confirmLabel="Confirm delete cart" busy={busy} onConfirm={confirmDelete} onCancel={() => setDeleting(false)} />
+          ) : (
+            <button
+              className="btn-ghost"
+              style={{ padding: "6px 12px", fontSize: 12.5, marginLeft: "auto", borderColor: "var(--magenta)", color: "var(--magenta)" }}
+              onClick={() => setDeleting(true)}
+            >
+              Delete cart
+            </button>
+          ))}
       </div>
 
       {expanded && (
@@ -146,11 +147,11 @@ function CartCard({ cart }: { cart: CartWithShelves }) {
   );
 }
 
-export function ManageCartsPanel({ initial }: { initial: CartWithShelves[] }) {
+export function ManageCartsPanel({ initial, isAdmin }: { initial: CartWithShelves[]; isAdmin: boolean }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {initial.map((c) => (
-        <CartCard key={c.cartId} cart={c} />
+        <CartCard key={c.cartId} cart={c} isAdmin={isAdmin} />
       ))}
       {initial.length === 0 && <p style={{ color: "var(--mist)", fontSize: 13.5 }}>No carts logged yet.</p>}
     </div>

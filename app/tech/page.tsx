@@ -10,9 +10,9 @@ export default async function TechHubPage() {
     { href: "/tech/log-color", idx: "03", title: "Log a color", desc: "PMS code, bin location, and bucket type — with a duplicate-PMS warning.", tint: "locator" as const },
     { href: "/tech/decommission-screen", idx: "04", title: "Decommission & reassign", desc: "Retire a damaged screen and move its active references to a new one.", tint: "pkg" as const },
     { href: "/analytics", idx: "05", title: "Analytics", desc: "Due-for-wash queue, cart capacity, ink levels, and freshness warnings.", tint: "locator" as const },
+    { href: "/tech/manage-carts", idx: "06", title: "Manage carts", desc: "Edit slot counts and fix shelf barcodes. Deleting a cart needs admin approval.", tint: "locator" as const },
   ];
   if (profile.role === "admin") {
-    tiles.push({ href: "/tech/manage-carts", idx: "06", title: "Manage carts", desc: "Edit slot counts, fix shelf barcodes, or force-delete a cart with approval.", tint: "locator" as const });
     tiles.push({ href: "/settings", idx: "07", title: "Settings", desc: "Bucket types, fullness thresholds, approval code, freshness & wash thresholds.", tint: "pkg" as const });
   }
 
