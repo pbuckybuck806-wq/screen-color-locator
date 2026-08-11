@@ -26,13 +26,17 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const profile = await getProfile();
+  const envLabel = process.env.NEXT_PUBLIC_ENV_LABEL;
 
   return (
     <html lang="en" className={`${bricolage.variable} ${inter.variable}`}>
       <body>
         <IconSymbols />
         <AmbientBackground />
-        <TopNav profile={profile} />
+        <div className="sticky-shell">
+          {envLabel && <div className="sandbox-banner">{envLabel} environment — not production data</div>}
+          <TopNav profile={profile} />
+        </div>
         {children}
         <ToastHost />
       </body>
