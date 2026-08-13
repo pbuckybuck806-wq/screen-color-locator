@@ -105,7 +105,7 @@ export function LogScreenForm() {
           autoFocus
           className="code"
           style={{ width: "100%", background: "var(--k)", border: "1px solid var(--cyan)", borderRadius: 10, color: "var(--paper)", padding: "13px 16px", fontSize: 14 }}
-          placeholder="Scan shelf barcode…  e.g. SHLF-A-01"
+          placeholder="Scan or type shelf ID…  e.g. B1 or SHLF-B-01"
           value={barcode}
           onChange={(e) => setBarcode(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submitPlacement()}
