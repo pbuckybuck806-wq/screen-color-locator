@@ -4,16 +4,27 @@ import { useState } from "react";
 import { RegMark, BucketIcon } from "@/components/IconSymbols";
 import { ScreenResultCard } from "@/components/ScreenResultCard";
 import { ColorResultCard } from "@/components/ColorResultCard";
-import { searchScreenByRef, returnScreenByBarcode, checkoutSr, washSr, requestWash, deleteSr, deleteScreen, lookupScreenByNumber } from "@/lib/actions/screens";
+import {
+  searchScreenByRef,
+  returnScreenByBarcode,
+  checkoutSr,
+  washSr,
+  requestWash,
+  deleteSr,
+  deleteScreen,
+  lookupScreenByNumber,
+  placeScreenByBarcode,
+} from "@/lib/actions/screens";
 import { searchColorByPms, markBucketStatus, addInk, weighBucket } from "@/lib/actions/paint";
 import { showToast } from "@/lib/toast";
-import type { ScreenSearchResult, ColorSearchResult, BucketStatus } from "@/lib/types";
+import type { ScreenSearchResult, ScreenSrMatch, ColorSearchResult, BucketStatus } from "@/lib/types";
 
 type Mode = "screens" | "colors";
 type Stage =
   | { kind: "placeholder" }
   | { kind: "not-found"; key: string }
   | { kind: "screen"; data: ScreenSearchResult }
+  | { kind: "screen-multi"; srCode: string; matches: ScreenSrMatch[] }
   | { kind: "color"; data: ColorSearchResult };
 
 const LEGEND: Record<Mode, [string, string][]> = {
@@ -59,8 +70,10 @@ export function LocatorApp({
     setBusy(true);
     try {
       if (mode === "screens") {
-        const data = await searchScreenByRef(value);
-        setStage(data ? { kind: "screen", data } : { kind: "not-found", key: value.toUpperCase() });
+        const outcome = await searchScreenByRef(value);
+        if (outcome.kind === "none") setStage({ kind: "not-found", key: value.toUpperCase() });
+        else if (outcome.kind === "single") setStage({ kind: "screen", data: outcome.data });
+        else setStage({ kind: "screen-multi", srCode: value.toUpperCase(), matches: outcome.matches });
       } else {
         const data = await searchColorByPms(value);
         setStage(data ? { kind: "color", data } : { kind: "not-found", key: value.toUpperCase() });
@@ -74,6 +87,27 @@ export function LocatorApp({
   function fillSearch(v: string) {
     setQuery(v);
     runSearch(v);
+  }
+
+  async function selectMatch(screenNumber: number) {
+    setBusy(true);
+    const data = await lookupScreenByNumber(screenNumber);
+    setBusy(false);
+    if (data) {
+      setStage({ kind: "screen", data });
+      setStageKey((k) => k + 1);
+    }
+  }
+
+  async function handleMoveShelf(barcode: string) {
+    if (stage.kind !== "screen") return;
+    setBusy(true);
+    const res = await placeScreenByBarcode(stage.data.screenId, barcode);
+    setBusy(false);
+    if (!res.ok) return showToast(res.error);
+    const refreshed = await lookupScreenByNumber(stage.data.screen);
+    if (refreshed) setStage({ kind: "screen", data: refreshed });
+    showToast("Screen moved.");
   }
 
   async function handleCheckout(srId: number) {
@@ -273,6 +307,38 @@ export function LocatorApp({
               </p>
             </div>
           )}
+          {stage.kind === "screen-multi" && (
+            <div className="result-card avail">
+              <p style={{ margin: "0 0 16px", fontSize: 14, color: "var(--mist)" }}>
+                <b className="code" style={{ color: "var(--paper)" }}>
+                  {stage.srCode}
+                </b>{" "}
+                is active on {stage.matches.length} screens — pick one.
+              </p>
+              <div className="ref-list">
+                {stage.matches.map((m) => (
+                  <button
+                    key={m.screenNumber}
+                    className="ref-row"
+                    style={{ width: "100%", textAlign: "left", cursor: "pointer", background: "var(--k)", border: "1px solid var(--line)" }}
+                    onClick={() => selectMatch(m.screenNumber)}
+                    disabled={busy}
+                  >
+                    <span className="rcode code">Screen #{m.screenNumber}</span>
+                    {m.differentiator && (
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 7, background: "var(--line-2)", color: "var(--paper)" }}>
+                        {m.differentiator}
+                      </span>
+                    )}
+                    <span className="design">{m.design}</span>
+                    <span className={`rstate ${m.status === "in_production" ? "run" : "done"}`} style={{ marginLeft: "auto" }}>
+                      {m.status === "in_production" ? "In production" : "On shelf"}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {stage.kind === "screen" && (
             <>
               <div className="squeegee" />
@@ -286,6 +352,7 @@ export function LocatorApp({
                 onRequestWash={handleRequestWash}
                 onDeleteSr={handleDeleteSr}
                 onDeleteScreen={handleDeleteScreen}
+                onMoveShelf={handleMoveShelf}
                 busy={busy}
               />
             </>

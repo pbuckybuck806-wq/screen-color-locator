@@ -8,8 +8,8 @@ export type WashReason = "one_off_returned" | "manual_request" | "stale_permanen
 export type SrRow = {
   id: number;
   code: string;
+  differentiator: string | null;
   design: string | null;
-  channel: string | null;
   srType: SrType;
   firstShotAt: string;
   lastUsedAt: string | null;
@@ -27,6 +27,21 @@ export type ScreenSearchResult = {
   shelf: string | null;
   srs: SrRow[];
 };
+
+// One row per screen when an SR code is active on more than one screen
+// (same code, different differentiator) — shown as a picker before loading
+// the full screen result.
+export type ScreenSrMatch = {
+  screenNumber: number;
+  differentiator: string | null;
+  design: string | null;
+  status: ScreenDerivedStatus;
+};
+
+export type ScreenSearchOutcome =
+  | { kind: "none" }
+  | { kind: "single"; data: ScreenSearchResult }
+  | { kind: "multi"; matches: ScreenSrMatch[] };
 
 export type BucketStatus = "available" | "in_use" | "empty";
 export type BucketFullness = "full" | "medium" | "low" | "empty";

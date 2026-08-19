@@ -5,12 +5,10 @@ import { logScreen, placeScreenByBarcode } from "@/lib/actions/screens";
 import { showToast } from "@/lib/toast";
 import type { SrType } from "@/lib/types";
 
-type SrDraft = { srCode: string; srType: SrType | ""; designName: string; channel: string; firstShotAt: string };
-
-const CHANNELS = ["", "cyan", "magenta", "yellow", "black"];
+type SrDraft = { srCode: string; srType: SrType | ""; differentiator: string; designName: string; firstShotAt: string };
 
 function emptySr(): SrDraft {
-  return { srCode: "", srType: "", designName: "", channel: "", firstShotAt: "" };
+  return { srCode: "", srType: "", differentiator: "", designName: "", firstShotAt: "" };
 }
 
 export function LogScreenForm() {
@@ -50,8 +48,8 @@ export function LogScreenForm() {
       cleanSrs.map((r) => ({
         srCode: r.srCode,
         srType: r.srType as SrType,
+        differentiator: r.differentiator || undefined,
         designName: r.designName || undefined,
-        channel: r.channel || undefined,
         firstShotAt: r.firstShotAt ? new Date(r.firstShotAt).toISOString() : undefined,
       })),
     );
@@ -151,29 +149,32 @@ export function LogScreenForm() {
               style={{ background: "transparent", border: "none", color: "var(--paper)", fontWeight: 600, flex: "1 1 140px" }}
             />
             <input
+              placeholder="Differentiator (if this code is reused)"
+              value={r.differentiator}
+              onChange={(e) => updateSr(i, { differentiator: e.target.value })}
+              style={{ background: "transparent", border: "none", color: "var(--mist)", flex: "1 1 180px" }}
+            />
+            <input
               placeholder="Design name"
               value={r.designName}
               onChange={(e) => updateSr(i, { designName: e.target.value })}
               style={{ background: "transparent", border: "none", color: "var(--mist)", flex: "1 1 140px" }}
             />
-            <select
-              value={r.channel}
-              onChange={(e) => updateSr(i, { channel: e.target.value })}
-              style={{ background: "var(--k)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--paper)", padding: "6px 8px" }}
-            >
-              {CHANNELS.map((c) => (
-                <option key={c} value={c}>
-                  {c || "channel"}
-                </option>
-              ))}
-            </select>
             <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--mist)" }}>
               First shot
               <input
                 type="date"
                 value={r.firstShotAt}
                 onChange={(e) => updateSr(i, { firstShotAt: e.target.value })}
-                style={{ background: "var(--k)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--paper)", padding: "6px 8px", fontSize: 12.5 }}
+                style={{
+                  background: "var(--k)",
+                  border: "1px solid var(--line)",
+                  borderRadius: 8,
+                  color: "var(--paper)",
+                  padding: "8px 10px",
+                  fontSize: 13,
+                  colorScheme: "dark",
+                }}
               />
             </label>
             <div className="mark-btns" style={{ width: "100%" }}>

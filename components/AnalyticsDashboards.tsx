@@ -105,7 +105,10 @@ export function AnalyticsDashboards({
               {screens.washQueue.length === 0 && <div className="empty-good">✓ Nothing due for wash.</div>}
               {screens.washQueue.map((r) => (
                 <div className="wash-item" key={r.srId}>
-                  <span className="rcode code">{r.srCode}</span>
+                  <span className="rcode code">
+                    {r.srCode}
+                    {r.differentiator ? ` · ${r.differentiator}` : ""}
+                  </span>
                   <span className="design">
                     Screen #{r.screenNumber}
                     {r.cartCode ? ` · Cart ${r.cartCode} · Shelf ${r.shelfCode}` : " · not on a shelf"} · {SR_TYPE_LABEL[r.srType]} ·{" "}
@@ -161,8 +164,11 @@ export function AnalyticsDashboards({
             <div className="wash-list">
               {screens.washedPool.length === 0 && <div className="empty-good">✓ Nothing waiting to be re-shot.</div>}
               {screens.washedPool.map((r) => (
-                <div className="wash-item" key={r.srCode}>
-                  <span className="rcode code">{r.srCode}</span>
+                <div className="wash-item" key={r.srId}>
+                  <span className="rcode code">
+                    {r.srCode}
+                    {r.differentiator ? ` · ${r.differentiator}` : ""}
+                  </span>
                   <span className="design">
                     {r.design} · {r.useCount}× · washed {formatDate(r.washedAt)}
                   </span>
@@ -177,7 +183,10 @@ export function AnalyticsDashboards({
               {screens.retirementReport.length === 0 && <div className="empty-good">No active SRs logged yet.</div>}
               {screens.retirementReport.map((r) => (
                 <div className="wash-item" key={r.srId}>
-                  <span className="rcode code">{r.srCode}</span>
+                  <span className="rcode code">
+                    {r.srCode}
+                    {r.differentiator ? ` · ${r.differentiator}` : ""}
+                  </span>
                   <span className="design">
                     Screen #{r.screenNumber} · {SR_TYPE_LABEL[r.srType]} · first shot {formatDate(r.firstShotAt)}
                   </span>

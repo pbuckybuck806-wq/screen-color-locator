@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/actions/settings";
-import type { ScreenSearchResult, SrRow, SrType, WashReason, ActionResult } from "@/lib/types";
+import type { ScreenSearchResult, ScreenSearchOutcome, ScreenSrMatch, SrRow, SrType, WashReason, ActionResult } from "@/lib/types";
 
 type SupabaseClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 
@@ -19,7 +19,7 @@ async function loadScreenState(supabase: SupabaseClient, screenId: number): Prom
 
   const { data: srRows } = await supabase
     .from("separation_references")
-    .select("id, sr_code, design_name, channel, sr_type, first_shot_at, last_used_at, use_count, wash_requested_at, wash_requested_reason")
+    .select("id, sr_code, differentiator, design_name, sr_type, first_shot_at, last_used_at, use_count, wash_requested_at, wash_requested_reason")
     .eq("screen_id", screenId)
     .eq("status", "active")
     .order("id");
@@ -43,8 +43,8 @@ async function loadScreenState(supabase: SupabaseClient, screenId: number): Prom
     return {
       id: r.id,
       code: r.sr_code,
+      differentiator: r.differentiator,
       design: r.design_name,
-      channel: r.channel,
       srType,
       firstShotAt: r.first_shot_at,
       lastUsedAt: r.last_used_at,
@@ -65,20 +65,40 @@ async function loadScreenState(supabase: SupabaseClient, screenId: number): Prom
   };
 }
 
-export async function searchScreenByRef(srCodeRaw: string): Promise<ScreenSearchResult | null> {
+// The same SR code can now be active on more than one screen at once, each
+// carrying a different differentiator. Zero matches → not found; exactly one
+// → load that screen directly (the common case, unchanged from before);
+// more than one → return the list so the caller can show a picker instead of
+// silently loading an arbitrary one of them.
+export async function searchScreenByRef(srCodeRaw: string): Promise<ScreenSearchOutcome> {
   const srCode = srCodeRaw.trim().toUpperCase();
-  if (!srCode) return null;
+  if (!srCode) return { kind: "none" };
   const supabase = await createSupabaseServerClient();
 
-  const { data: srRow } = await supabase
+  const { data: srRows } = await supabase
     .from("separation_references")
-    .select("screen_id")
+    .select("screen_id, differentiator, design_name")
     .eq("sr_code", srCode)
-    .eq("status", "active")
-    .maybeSingle();
-  if (!srRow || !srRow.screen_id) return null;
+    .eq("status", "active");
 
-  return loadScreenState(supabase, srRow.screen_id);
+  const valid = (srRows ?? []).filter((r): r is typeof r & { screen_id: number } => r.screen_id != null);
+  if (valid.length === 0) return { kind: "none" };
+
+  const states = await Promise.all(valid.map((r) => loadScreenState(supabase, r.screen_id)));
+  const resolved = valid
+    .map((r, i) => ({ r, state: states[i] }))
+    .filter((x): x is { r: (typeof valid)[number]; state: ScreenSearchResult } => x.state !== null);
+
+  if (resolved.length === 0) return { kind: "none" };
+  if (resolved.length === 1) return { kind: "single", data: resolved[0].state };
+
+  const matches: ScreenSrMatch[] = resolved.map(({ r, state }) => ({
+    screenNumber: state.screen,
+    differentiator: r.differentiator,
+    design: r.design_name,
+    status: state.status,
+  }));
+  return { kind: "multi", matches };
 }
 
 export async function lookupScreenByNumber(screenNumber: number): Promise<ScreenSearchResult | null> {
@@ -119,7 +139,7 @@ export async function returnScreenByBarcode(screenId: number, barcode: string): 
 
 export async function logScreen(
   screenNumber: number,
-  srs: { srCode: string; srType: SrType; designName?: string; channel?: string; firstShotAt?: string }[],
+  srs: { srCode: string; srType: SrType; differentiator?: string; designName?: string; firstShotAt?: string }[],
 ): Promise<ActionResult<{ screenId: number }>> {
   if (srs.length === 0) return { ok: false, error: "Enter at least one separation reference." };
   const supabase = await createSupabaseServerClient();
@@ -129,8 +149,8 @@ export async function logScreen(
     p_srs: srs.map((r) => ({
       sr_code: r.srCode,
       sr_type: r.srType,
+      differentiator: r.differentiator ?? null,
       design_name: r.designName ?? null,
-      channel: r.channel ?? null,
       first_shot_at: r.firstShotAt ?? null,
     })),
   });

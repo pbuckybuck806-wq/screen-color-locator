@@ -15,6 +15,7 @@ function monthsAgo(months: number): Date {
 export type WashQueueItem = {
   srId: number;
   srCode: string;
+  differentiator: string | null;
   srType: SrType;
   screenNumber: number;
   cartCode: string | null;
@@ -27,6 +28,7 @@ export type WashQueueItem = {
 export type RetirementReportRow = {
   srId: number;
   srCode: string;
+  differentiator: string | null;
   srType: SrType;
   screenNumber: number;
   firstShotAt: string;
@@ -39,7 +41,7 @@ export type ScreensDashboard = {
   inProduction: number;
   washQueue: WashQueueItem[];
   fullyReclaimableScreens: { screenNumber: number; dueCount: number }[];
-  washedPool: { srCode: string; design: string | null; washedAt: string | null; useCount: number }[];
+  washedPool: { srId: number; srCode: string; differentiator: string | null; design: string | null; washedAt: string | null; useCount: number }[];
   cartCapacity: { code: string; shelfCount: number; occupied: number; available: number }[];
   neverUsedCount: number;
   retirementReport: RetirementReportRow[];
@@ -72,7 +74,7 @@ export async function getScreensDashboard(): Promise<ScreensDashboard> {
     supabase.from("wash_queue").select("*").order("wash_requested_at", { ascending: true, nullsFirst: true }),
     supabase
       .from("separation_references")
-      .select("sr_code, design_name, washed_at, use_count")
+      .select("id, sr_code, differentiator, design_name, washed_at, use_count")
       .eq("status", "washed")
       .order("washed_at", { ascending: false })
       .limit(20),
@@ -82,6 +84,7 @@ export async function getScreensDashboard(): Promise<ScreensDashboard> {
   const washQueue: WashQueueItem[] = (queueRows.data ?? []).map((r) => ({
     srId: r.sr_id,
     srCode: r.sr_code,
+    differentiator: r.differentiator,
     srType: r.sr_type,
     screenNumber: r.screen_number,
     cartCode: r.cart_code,
@@ -116,6 +119,7 @@ export async function getScreensDashboard(): Promise<ScreensDashboard> {
   const retirementReport: RetirementReportRow[] = (reportRows ?? []).map((r) => ({
     srId: r.sr_id,
     srCode: r.sr_code,
+    differentiator: r.differentiator,
     srType: r.sr_type,
     screenNumber: r.screen_number,
     firstShotAt: r.first_shot_at,
@@ -128,7 +132,14 @@ export async function getScreensDashboard(): Promise<ScreensDashboard> {
     inProduction: inProduction.count ?? 0,
     washQueue,
     fullyReclaimableScreens,
-    washedPool: (washedRows.data ?? []).map((r) => ({ srCode: r.sr_code, design: r.design_name, washedAt: r.washed_at, useCount: r.use_count })),
+    washedPool: (washedRows.data ?? []).map((r) => ({
+      srId: r.id,
+      srCode: r.sr_code,
+      differentiator: r.differentiator,
+      design: r.design_name,
+      washedAt: r.washed_at,
+      useCount: r.use_count,
+    })),
     cartCapacity: (cartRows.data ?? []).map((c) => ({ code: c.cart_code, shelfCount: c.shelf_count, occupied: c.occupied, available: c.available })),
     neverUsedCount,
     retirementReport,

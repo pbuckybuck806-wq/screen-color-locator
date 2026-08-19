@@ -5,13 +5,6 @@ import { RegMark } from "@/components/IconSymbols";
 import { ApprovalDeletePrompt } from "@/components/ApprovalDeletePrompt";
 import type { ScreenSearchResult, SrRow } from "@/lib/types";
 
-const CHANNEL_VAR: Record<string, string> = {
-  cyan: "var(--cyan)",
-  magenta: "var(--magenta)",
-  yellow: "var(--yellow)",
-  black: "#6b7785",
-};
-
 function formatDate(iso: string | null) {
   if (!iso) return "Never used";
   return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
@@ -119,6 +112,7 @@ export function ScreenResultCard({
   onRequestWash,
   onDeleteSr,
   onDeleteScreen,
+  onMoveShelf,
   busy,
 }: {
   result: ScreenSearchResult;
@@ -130,11 +124,14 @@ export function ScreenResultCard({
   onRequestWash: (srId: number) => void;
   onDeleteSr: (srId: number, approvalCode: string) => void;
   onDeleteScreen: (approvalCode: string) => void;
+  onMoveShelf: (barcode: string) => void;
   busy: boolean;
 }) {
   const [scanning, setScanning] = useState(false);
   const [scanValue, setScanValue] = useState("");
   const [deletingScreen, setDeletingScreen] = useState(false);
+  const [moving, setMoving] = useState(false);
+  const [moveValue, setMoveValue] = useState("");
 
   const cardClass = result.status === "in_production" ? "prod" : "avail";
   const tagLabel = result.status === "in_production" ? "● In production" : "● On shelf";
@@ -145,6 +142,13 @@ export function ScreenResultCard({
     onReturn(scanValue.trim());
     setScanValue("");
     setScanning(false);
+  }
+
+  function submitMove() {
+    if (!moveValue.trim()) return;
+    onMoveShelf(moveValue.trim());
+    setMoveValue("");
+    setMoving(false);
   }
 
   return (
@@ -177,8 +181,12 @@ export function ScreenResultCard({
           {result.srs.length === 0 && <p style={{ color: "var(--mist)", fontSize: 13.5 }}>No active references on this screen.</p>}
           {result.srs.map((sr) => (
             <div className="ref-row" key={sr.id} style={{ flexWrap: "wrap" }}>
-              <span className="chan" style={{ background: CHANNEL_VAR[sr.channel ?? ""] ?? "var(--mist-2)" }} />
               <span className="rcode code">{sr.code}</span>
+              {sr.differentiator && (
+                <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 7, background: "var(--line-2)", color: "var(--paper)" }}>
+                  {sr.differentiator}
+                </span>
+              )}
               <span className="design" style={{ fontSize: 11 }}>
                 {sr.srType === "permanent" ? "Permanent" : "One-off"}
               </span>
@@ -206,7 +214,14 @@ export function ScreenResultCard({
         <div className="note-banner inuse">
           <RegMark style={{ color: "var(--magenta)", width: 20, height: 20 }} />
           <span>
-            <b className="mag">Checked out.</b> Running <b>{runningSr.code}</b>. It&apos;ll free up when returned.
+            <b className="mag">Checked out.</b> Running <b>{runningSr.code}</b>.{" "}
+            {result.shelf ? (
+              <>
+                Return to <b>Shelf {result.shelf}</b> when done.
+              </>
+            ) : (
+              "It'll free up when returned."
+            )}
           </span>
         </div>
       )}
@@ -229,6 +244,27 @@ export function ScreenResultCard({
           </button>
         )}
       </div>
+
+      {isTech && (
+        <div className="rc-actions" style={{ marginTop: 10 }}>
+          {moving ? (
+            <input
+              autoFocus
+              className="code"
+              style={{ background: "var(--k)", border: "1px solid var(--line-2)", borderRadius: 10, color: "var(--paper)", padding: "13px 16px", fontSize: 14 }}
+              placeholder="Scan or type shelf ID to move it to…"
+              value={moveValue}
+              onChange={(e) => setMoveValue(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submitMove()}
+              onBlur={() => !moveValue && setMoving(false)}
+            />
+          ) : (
+            <button className="btn-ghost" onClick={() => setMoving(true)} disabled={busy}>
+              Move to a different shelf
+            </button>
+          )}
+        </div>
+      )}
 
       {isAdmin && (
         <div className="rc-actions" style={{ marginTop: 10 }}>
