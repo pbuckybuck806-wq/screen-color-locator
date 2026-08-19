@@ -131,9 +131,9 @@ export function LocatorApp({
     }
   }
 
-  async function handleWashSr(srId: number, tag: "washed" | "decommissioned", reason?: string) {
+  async function handleWashSr(srId: number, tag: "washed" | "decommissioned", destinationShelf: string, reason?: string) {
     setBusy(true);
-    const res = await washSr(srId, tag, reason);
+    const res = await washSr(srId, tag, destinationShelf, reason);
     setBusy(false);
     if (!res.ok) showToast(res.error);
     else if (res.data) {

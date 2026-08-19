@@ -31,12 +31,13 @@ function SrRowActions({
   isTech: boolean;
   isAdmin: boolean;
   onCheckout: (srId: number) => void;
-  onWashSr: (srId: number, tag: "washed" | "decommissioned", reason?: string) => void;
+  onWashSr: (srId: number, tag: "washed" | "decommissioned", destinationShelf: string, reason?: string) => void;
   onRequestWash: (srId: number) => void;
   onDeleteSr: (srId: number, approvalCode: string) => void;
 }) {
   const [washing, setWashing] = useState(false);
   const [reason, setReason] = useState("");
+  const [destShelf, setDestShelf] = useState("");
   const [deleting, setDeleting] = useState(false);
 
   if (deleting) {
@@ -48,18 +49,31 @@ function SrRowActions({
   }
 
   if (washing) {
+    const canSubmit = destShelf.trim().length > 0;
     return (
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginLeft: "auto" }}>
+        <input
+          autoFocus
+          placeholder="Destination shelf (required)"
+          value={destShelf}
+          onChange={(e) => setDestShelf(e.target.value)}
+          style={{ background: "var(--k)", border: "1px solid var(--cyan)", borderRadius: 8, color: "var(--paper)", padding: "6px 10px", fontSize: 12.5, width: 170 }}
+        />
         <input
           placeholder="Reason (optional)"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           style={{ background: "var(--k)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--paper)", padding: "6px 10px", fontSize: 12.5, width: 150 }}
         />
-        <button className="btn-ghost" style={{ padding: "6px 12px", fontSize: 12.5 }} disabled={screenBusy} onClick={() => onWashSr(sr.id, "washed", reason)}>
+        <button className="btn-ghost" style={{ padding: "6px 12px", fontSize: 12.5 }} disabled={screenBusy || !canSubmit} onClick={() => onWashSr(sr.id, "washed", destShelf.trim(), reason)}>
           Tag washed
         </button>
-        <button className="btn-ghost" style={{ padding: "6px 12px", fontSize: 12.5 }} disabled={screenBusy} onClick={() => onWashSr(sr.id, "decommissioned", reason)}>
+        <button
+          className="btn-ghost"
+          style={{ padding: "6px 12px", fontSize: 12.5 }}
+          disabled={screenBusy || !canSubmit}
+          onClick={() => onWashSr(sr.id, "decommissioned", destShelf.trim(), reason)}
+        >
           Tag decommissioned
         </button>
         <button className="btn-ghost" style={{ padding: "6px 12px", fontSize: 12.5 }} onClick={() => setWashing(false)}>
@@ -120,7 +134,7 @@ export function ScreenResultCard({
   isAdmin: boolean;
   onCheckout: (srId: number) => void;
   onReturn: (barcode: string) => void;
-  onWashSr: (srId: number, tag: "washed" | "decommissioned", reason?: string) => void;
+  onWashSr: (srId: number, tag: "washed" | "decommissioned", destinationShelf: string, reason?: string) => void;
   onRequestWash: (srId: number) => void;
   onDeleteSr: (srId: number, approvalCode: string) => void;
   onDeleteScreen: (approvalCode: string) => void;

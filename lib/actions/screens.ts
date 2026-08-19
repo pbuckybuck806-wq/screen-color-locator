@@ -187,11 +187,17 @@ export async function placeScreenByBarcode(screenId: number, barcode: string): P
 export async function washSr(
   srId: number,
   tag: "washed" | "decommissioned",
+  destinationShelf: string,
   reason?: string,
 ): Promise<ActionResult<ScreenSearchResult | null>> {
   const supabase = await createSupabaseServerClient();
 
-  const { data: oldScreenId, error } = await supabase.rpc("rpc_wash_sr", { p_sr_id: srId, p_tag: tag, p_reason: reason ?? null });
+  const { data: oldScreenId, error } = await supabase.rpc("rpc_wash_sr", {
+    p_sr_id: srId,
+    p_tag: tag,
+    p_reason: reason ?? null,
+    p_barcode: destinationShelf,
+  });
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/", "layout");
