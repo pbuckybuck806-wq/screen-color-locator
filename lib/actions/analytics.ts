@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireTech } from "@/lib/auth";
 import { getSettings } from "@/lib/actions/settings";
 import { fullnessFor } from "@/lib/paintFullness";
-import type { BucketFullness, SrType, WashReason } from "@/lib/types";
+import type { BucketFullness, SrType, SrStatus, WashReason } from "@/lib/types";
 
 function monthsAgo(months: number): Date {
   const d = new Date();
@@ -30,7 +30,8 @@ export type RetirementReportRow = {
   srCode: string;
   differentiator: string | null;
   srType: SrType;
-  screenNumber: number;
+  status: SrStatus;
+  screenNumber: number | null;
   firstShotAt: string;
   lastUsedAt: string | null;
   useCount: number;
@@ -186,13 +187,14 @@ export async function getRetirementReport(): Promise<RetirementReportRow[]> {
     .select("*")
     .order("use_count", { ascending: true })
     .order("last_used_at", { ascending: true, nullsFirst: true })
-    .limit(500);
+    .limit(1000);
 
   return (reportRows ?? []).map((r) => ({
     srId: r.sr_id,
     srCode: r.sr_code,
     differentiator: r.differentiator,
     srType: r.sr_type,
+    status: r.status,
     screenNumber: r.screen_number,
     firstShotAt: r.first_shot_at,
     lastUsedAt: r.last_used_at,

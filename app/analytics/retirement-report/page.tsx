@@ -4,7 +4,7 @@ import { getRetirementReport } from "@/lib/actions/analytics";
 import { RetirementReportTable } from "@/components/RetirementReportTable";
 
 export default async function RetirementReportPage() {
-  await requireTech();
+  const profile = await requireTech();
   const rows = await getRetirementReport();
 
   return (
@@ -18,11 +18,11 @@ export default async function RetirementReportPage() {
               </Link>
             </p>
             <h1 className="title">SR usage &amp; retirement report</h1>
-            <p style={{ color: "var(--mist)", fontSize: 14, marginTop: 8 }}>Least-used, oldest first — candidates to retire manually.</p>
+            <p style={{ color: "var(--mist)", fontSize: 14, marginTop: 8 }}>Every SR ever logged — least-used, oldest first.</p>
           </div>
         </div>
         <div className="card" style={{ marginTop: 24 }}>
-          <RetirementReportTable rows={rows} />
+          <RetirementReportTable rows={rows} isAdmin={profile.role === "admin"} />
         </div>
       </div>
     </section>
