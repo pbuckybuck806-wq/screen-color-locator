@@ -32,6 +32,7 @@ export type ScreenSearchResult = {
 // (same code, different differentiator) — shown as a picker before loading
 // the full screen result.
 export type ScreenSrMatch = {
+  srId: number;
   screenNumber: number;
   differentiator: string | null;
   design: string | null;
@@ -40,7 +41,7 @@ export type ScreenSrMatch = {
 
 export type ScreenSearchOutcome =
   | { kind: "none" }
-  | { kind: "single"; data: ScreenSearchResult }
+  | { kind: "single"; data: ScreenSearchResult; matchedSrId: number }
   | { kind: "multi"; matches: ScreenSrMatch[] };
 
 export type BucketStatus = "available" | "in_use" | "empty";

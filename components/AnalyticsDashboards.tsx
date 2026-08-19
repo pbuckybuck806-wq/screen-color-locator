@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getColorsDashboard, type ColorsDashboard, type ScreensDashboard } from "@/lib/actions/analytics";
 
 function formatDate(iso: string | null) {
@@ -28,6 +29,7 @@ export function AnalyticsDashboards({
   const [screens] = useState(initialScreens);
   const [colors, setColors] = useState<ColorsDashboard | null>(null);
   const [barsIn, setBarsIn] = useState(false);
+  const [showInProduction, setShowInProduction] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setBarsIn(true), 60);
@@ -77,11 +79,11 @@ export function AnalyticsDashboards({
             <div className="v">{screens.onFloor}</div>
             <div className="sub">on shelf right now</div>
           </div>
-          <div className="stat">
+          <div className="stat clickable" onClick={() => setShowInProduction((v) => !v)}>
             <div className="bar-accent" style={{ background: "var(--magenta)" }} />
             <div className="cap">In production</div>
             <div className="v">{screens.inProduction}</div>
-            <div className="sub">checked out to jobs</div>
+            <div className="sub">checked out to jobs · {showInProduction ? "hide list ▲" : "click to view ▼"}</div>
           </div>
           <div className="stat">
             <div className="bar-accent" style={{ background: "var(--yellow)" }} />
@@ -96,6 +98,31 @@ export function AnalyticsDashboards({
             <div className="sub">logged, not yet run</div>
           </div>
         </div>
+
+        {showInProduction && (
+          <div className="card" style={{ marginBottom: 16 }}>
+            <h4>Checked out to production</h4>
+            <p className="sub">SR, screen, and the shelf it was taken from</p>
+            <div className="wash-list">
+              {screens.inProductionList.length === 0 && <div className="empty-good">✓ Nothing checked out right now.</div>}
+              {screens.inProductionList.map((r) => (
+                <div className="wash-item" key={r.srId}>
+                  <span className="rcode code">
+                    {r.srCode}
+                    {r.differentiator ? ` · ${r.differentiator}` : ""}
+                  </span>
+                  <span className="design">
+                    Screen #{r.screenNumber}
+                    {r.cartCode ? ` · from Cart ${r.cartCode} · Shelf ${r.shelfCode}` : " · not on a shelf"}
+                  </span>
+                  <span className="cyc" style={{ color: "var(--magenta)" }}>
+                    since {formatDate(r.checkedOutAt)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="an-cols">
           <div className="card">
@@ -176,25 +203,19 @@ export function AnalyticsDashboards({
               ))}
             </div>
           </div>
-          <div className="card">
+          <div className="card" style={{ display: "flex", flexDirection: "column" }}>
             <h4>SR usage &amp; retirement report</h4>
             <p className="sub">Least-used, oldest first — candidates to retire manually</p>
-            <div className="wash-list">
-              {screens.retirementReport.length === 0 && <div className="empty-good">No active SRs logged yet.</div>}
-              {screens.retirementReport.map((r) => (
-                <div className="wash-item" key={r.srId}>
-                  <span className="rcode code">
-                    {r.srCode}
-                    {r.differentiator ? ` · ${r.differentiator}` : ""}
-                  </span>
-                  <span className="design">
-                    Screen #{r.screenNumber} · {SR_TYPE_LABEL[r.srType]} · first shot {formatDate(r.firstShotAt)}
-                  </span>
-                  <span className="cyc">
-                    {r.useCount}× · {formatDate(r.lastUsedAt)}
-                  </span>
-                </div>
-              ))}
+            <div style={{ marginTop: "auto", paddingTop: 16 }}>
+              <div className="v" style={{ fontSize: 32 }}>
+                {screens.retirementReportCount}
+              </div>
+              <div className="sub" style={{ marginBottom: 14 }}>
+                active SRs tracked
+              </div>
+              <Link href="/analytics/retirement-report" className="btn-ghost" style={{ display: "inline-block" }}>
+                View full report →
+              </Link>
             </div>
           </div>
         </div>

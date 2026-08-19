@@ -23,7 +23,7 @@ type Mode = "screens" | "colors";
 type Stage =
   | { kind: "placeholder" }
   | { kind: "not-found"; key: string }
-  | { kind: "screen"; data: ScreenSearchResult }
+  | { kind: "screen"; data: ScreenSearchResult; highlightSrId?: number }
   | { kind: "screen-multi"; srCode: string; matches: ScreenSrMatch[] }
   | { kind: "color"; data: ColorSearchResult };
 
@@ -72,7 +72,7 @@ export function LocatorApp({
       if (mode === "screens") {
         const outcome = await searchScreenByRef(value);
         if (outcome.kind === "none") setStage({ kind: "not-found", key: value.toUpperCase() });
-        else if (outcome.kind === "single") setStage({ kind: "screen", data: outcome.data });
+        else if (outcome.kind === "single") setStage({ kind: "screen", data: outcome.data, highlightSrId: outcome.matchedSrId });
         else setStage({ kind: "screen-multi", srCode: value.toUpperCase(), matches: outcome.matches });
       } else {
         const data = await searchColorByPms(value);
@@ -89,55 +89,63 @@ export function LocatorApp({
     runSearch(v);
   }
 
-  async function selectMatch(screenNumber: number) {
+  async function selectMatch(match: ScreenSrMatch) {
     setBusy(true);
-    const data = await lookupScreenByNumber(screenNumber);
+    const data = await lookupScreenByNumber(match.screenNumber);
     setBusy(false);
     if (data) {
-      setStage({ kind: "screen", data });
+      setStage({ kind: "screen", data, highlightSrId: match.srId });
       setStageKey((k) => k + 1);
     }
   }
 
   async function handleMoveShelf(barcode: string) {
     if (stage.kind !== "screen") return;
+    const highlightSrId = stage.highlightSrId;
     setBusy(true);
     const res = await placeScreenByBarcode(stage.data.screenId, barcode);
     setBusy(false);
     if (!res.ok) return showToast(res.error);
     const refreshed = await lookupScreenByNumber(stage.data.screen);
-    if (refreshed) setStage({ kind: "screen", data: refreshed });
+    if (refreshed) setStage({ kind: "screen", data: refreshed, highlightSrId });
     showToast("Screen moved.");
   }
 
   async function handleCheckout(srId: number) {
     if (stage.kind !== "screen") return;
+    const highlightSrId = stage.highlightSrId;
     setBusy(true);
     const res = await checkoutSr(srId);
     setBusy(false);
     if (!res.ok) showToast(res.error);
-    else setStage({ kind: "screen", data: res.data });
+    else setStage({ kind: "screen", data: res.data, highlightSrId });
   }
 
   async function handleReturn(barcode: string) {
     if (stage.kind !== "screen") return;
+    const highlightSrId = stage.highlightSrId;
     setBusy(true);
     const res = await returnScreenByBarcode(stage.data.screenId, barcode);
     setBusy(false);
     if (!res.ok) showToast(res.error);
     else {
-      setStage({ kind: "screen", data: res.data });
+      setStage({ kind: "screen", data: res.data, highlightSrId });
       showToast("Screen returned to shelf.");
     }
   }
 
   async function handleWashSr(srId: number, tag: "washed" | "decommissioned", destinationShelf: string, reason?: string) {
+    // The washed/decommissioned SR itself detaches from the screen — if it
+    // was the highlighted one, drop the highlight rather than leave it
+    // pointing at an SR that's no longer in the list (which would otherwise
+    // just dim everything).
+    const highlightSrId = stage.kind === "screen" && stage.highlightSrId !== srId ? stage.highlightSrId : undefined;
     setBusy(true);
     const res = await washSr(srId, tag, destinationShelf, reason);
     setBusy(false);
     if (!res.ok) showToast(res.error);
     else if (res.data) {
-      setStage({ kind: "screen", data: res.data });
+      setStage({ kind: "screen", data: res.data, highlightSrId });
       showToast(`Reference tagged ${tag}.`);
     } else {
       setStage({ kind: "placeholder" });
@@ -148,12 +156,13 @@ export function LocatorApp({
 
   async function handleRequestWash(srId: number) {
     if (stage.kind !== "screen") return;
+    const highlightSrId = stage.highlightSrId;
     setBusy(true);
     const res = await requestWash(srId);
     setBusy(false);
     if (!res.ok) showToast(res.error);
     else {
-      if (res.data) setStage({ kind: "screen", data: res.data });
+      if (res.data) setStage({ kind: "screen", data: res.data, highlightSrId });
       showToast("Queued for wash.");
     }
   }
@@ -161,13 +170,14 @@ export function LocatorApp({
   async function handleDeleteSr(srId: number, approvalCode: string) {
     if (stage.kind !== "screen") return;
     const screenNumber = stage.data.screen;
+    const highlightSrId = stage.highlightSrId !== srId ? stage.highlightSrId : undefined;
     setBusy(true);
     const res = await deleteSr(srId, approvalCode);
     setBusy(false);
     if (!res.ok) return showToast(res.error);
     showToast("Reference deleted.");
     const refreshed = await lookupScreenByNumber(screenNumber);
-    if (refreshed) setStage({ kind: "screen", data: refreshed });
+    if (refreshed) setStage({ kind: "screen", data: refreshed, highlightSrId });
   }
 
   async function handleDeleteScreen(approvalCode: string) {
@@ -318,10 +328,10 @@ export function LocatorApp({
               <div className="ref-list">
                 {stage.matches.map((m) => (
                   <button
-                    key={m.screenNumber}
+                    key={m.srId}
                     className="ref-row"
                     style={{ width: "100%", textAlign: "left", cursor: "pointer", background: "var(--k)", border: "1px solid var(--line)" }}
-                    onClick={() => selectMatch(m.screenNumber)}
+                    onClick={() => selectMatch(m)}
                     disabled={busy}
                   >
                     <span className="rcode code">Screen #{m.screenNumber}</span>
@@ -344,6 +354,7 @@ export function LocatorApp({
               <div className="squeegee" />
               <ScreenResultCard
                 result={stage.data}
+                highlightSrId={stage.highlightSrId}
                 isTech={isTech}
                 isAdmin={isAdmin}
                 onCheckout={handleCheckout}

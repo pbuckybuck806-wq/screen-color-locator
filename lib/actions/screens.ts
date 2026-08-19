@@ -77,7 +77,7 @@ export async function searchScreenByRef(srCodeRaw: string): Promise<ScreenSearch
 
   const { data: srRows } = await supabase
     .from("separation_references")
-    .select("screen_id, differentiator, design_name")
+    .select("id, screen_id, differentiator, design_name")
     .eq("sr_code", srCode)
     .eq("status", "active");
 
@@ -90,9 +90,10 @@ export async function searchScreenByRef(srCodeRaw: string): Promise<ScreenSearch
     .filter((x): x is { r: (typeof valid)[number]; state: ScreenSearchResult } => x.state !== null);
 
   if (resolved.length === 0) return { kind: "none" };
-  if (resolved.length === 1) return { kind: "single", data: resolved[0].state };
+  if (resolved.length === 1) return { kind: "single", data: resolved[0].state, matchedSrId: resolved[0].r.id };
 
   const matches: ScreenSrMatch[] = resolved.map(({ r, state }) => ({
+    srId: r.id,
     screenNumber: state.screen,
     differentiator: r.differentiator,
     design: r.design_name,

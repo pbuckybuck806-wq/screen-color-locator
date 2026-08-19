@@ -10,7 +10,7 @@ async function getSampleQueries() {
     .select("sr_code")
     .eq("status", "active")
     .order("id", { ascending: false })
-    .limit(4);
+    .limit(12);
 
   const { data: colorRows } = await supabase
     .from("paint_colors")
@@ -18,8 +18,12 @@ async function getSampleQueries() {
     .order("id")
     .limit(4);
 
+  // The same code can now appear on several rows (different differentiators)
+  // — dedupe before sampling so the "Try:" chips don't repeat a key.
+  const screenRefs = [...new Set((srRows ?? []).map((r) => r.sr_code))].slice(0, 4);
+
   return {
-    screenRefs: (srRows ?? []).map((r) => r.sr_code),
+    screenRefs,
     colorSamples: (colorRows ?? []).map((c) => ({ code: c.pms_code, hex: c.hex ?? "#8B9AAA" })),
   };
 }

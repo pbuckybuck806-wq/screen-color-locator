@@ -118,6 +118,7 @@ function SrRowActions({
 
 export function ScreenResultCard({
   result,
+  highlightSrId,
   isTech,
   isAdmin,
   onCheckout,
@@ -130,6 +131,12 @@ export function ScreenResultCard({
   busy,
 }: {
   result: ScreenSearchResult;
+  // When set, only this reference (the one actually searched for) is shown
+  // at full emphasis — every other active reference on the same screen is
+  // dimmed instead of hidden, so an operator can still see the screen
+  // carries other jobs (relevant since checking one out locks the whole
+  // screen) without risking acting on the wrong row.
+  highlightSrId?: number;
   isTech: boolean;
   isAdmin: boolean;
   onCheckout: (srId: number) => void;
@@ -193,8 +200,10 @@ export function ScreenResultCard({
         <div className="cap">Active separation references</div>
         <div className="ref-list">
           {result.srs.length === 0 && <p style={{ color: "var(--mist)", fontSize: 13.5 }}>No active references on this screen.</p>}
-          {result.srs.map((sr) => (
-            <div className="ref-row" key={sr.id} style={{ flexWrap: "wrap" }}>
+          {result.srs.map((sr) => {
+            const dimmed = highlightSrId != null && sr.id !== highlightSrId;
+            return (
+            <div className="ref-row" key={sr.id} style={{ flexWrap: "wrap", opacity: dimmed ? 0.45 : 1, borderColor: dimmed ? undefined : highlightSrId === sr.id ? "var(--cyan)" : undefined }}>
               <span className="rcode code">{sr.code}</span>
               {sr.differentiator && (
                 <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 7, background: "var(--line-2)", color: "var(--paper)" }}>
@@ -220,7 +229,8 @@ export function ScreenResultCard({
                 onDeleteSr={onDeleteSr}
               />
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

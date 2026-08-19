@@ -36,15 +36,26 @@ export type RetirementReportRow = {
   useCount: number;
 };
 
+export type InProductionItem = {
+  srId: number;
+  srCode: string;
+  differentiator: string | null;
+  screenNumber: number;
+  cartCode: string | null;
+  shelfCode: string | null;
+  checkedOutAt: string;
+};
+
 export type ScreensDashboard = {
   onFloor: number;
   inProduction: number;
+  inProductionList: InProductionItem[];
   washQueue: WashQueueItem[];
   fullyReclaimableScreens: { screenNumber: number; dueCount: number }[];
   washedPool: { srId: number; srCode: string; differentiator: string | null; design: string | null; washedAt: string | null; useCount: number }[];
   cartCapacity: { code: string; shelfCount: number; occupied: number; available: number }[];
   neverUsedCount: number;
-  retirementReport: RetirementReportRow[];
+  retirementReportCount: number;
 };
 
 export type ColorsDashboard = {
@@ -59,7 +70,7 @@ export async function getScreensDashboard(): Promise<ScreensDashboard> {
   await requireTech();
   const supabase = await createSupabaseServerClient();
 
-  const [onFloor, inProduction, activeSrRows, queueRows, washedRows, cartRows] = await Promise.all([
+  const [onFloor, inProdScreens, activeSrRows, queueRows, washedRows, cartRows, retirementCount] = await Promise.all([
     // "On the floor" means actually placed on a shelf — not just "not checked
     // out," which would otherwise include every never-logged blank screen.
     supabase
@@ -68,7 +79,13 @@ export async function getScreensDashboard(): Promise<ScreensDashboard> {
       .eq("screen_status", "active")
       .eq("derived_status", "on_shelf")
       .not("shelf_id", "is", null),
-    supabase.from("screen_status").select("*", { count: "exact", head: true }).eq("screen_status", "active").eq("derived_status", "in_production"),
+    // Real rows (not just a count) so the "In production" tile can expand
+    // into an actual list — which SR, which screen, taken from where.
+    supabase
+      .from("screen_status")
+      .select("screen_id, screen_number, shelf_code, cart_code, active_checkout_ref_id")
+      .eq("screen_status", "active")
+      .eq("derived_status", "in_production"),
     supabase.from("separation_references").select("screen_id, use_count").eq("status", "active"),
     // Explicit, actionable wash queue — real SR codes, location, and why each is due.
     supabase.from("wash_queue").select("*").order("wash_requested_at", { ascending: true, nullsFirst: true }),
@@ -79,7 +96,34 @@ export async function getScreensDashboard(): Promise<ScreensDashboard> {
       .order("washed_at", { ascending: false })
       .limit(20),
     supabase.from("cart_capacity").select("*").order("cart_id"),
+    supabase.from("sr_usage_report").select("*", { count: "exact", head: true }),
   ]);
+
+  const refIds = (inProdScreens.data ?? [])
+    .map((s) => s.active_checkout_ref_id)
+    .filter((id): id is number => id != null);
+  const [srInfoRows, checkoutRows] = await Promise.all([
+    supabase.from("separation_references").select("id, sr_code, differentiator").in("id", refIds.length ? refIds : [-1]),
+    supabase.from("checkouts").select("separation_reference_id, checked_out_at").in("separation_reference_id", refIds.length ? refIds : [-1]).is("returned_at", null),
+  ]);
+  const srInfoMap = new Map((srInfoRows.data ?? []).map((r) => [r.id, r]));
+  const checkedOutAtMap = new Map((checkoutRows.data ?? []).map((r) => [r.separation_reference_id, r.checked_out_at]));
+
+  const inProductionList: InProductionItem[] = (inProdScreens.data ?? [])
+    .filter((s): s is typeof s & { active_checkout_ref_id: number } => s.active_checkout_ref_id != null)
+    .map((s) => {
+      const sr = srInfoMap.get(s.active_checkout_ref_id);
+      return {
+        srId: s.active_checkout_ref_id,
+        srCode: sr?.sr_code ?? "",
+        differentiator: sr?.differentiator ?? null,
+        screenNumber: s.screen_number,
+        cartCode: s.cart_code,
+        shelfCode: s.shelf_code,
+        checkedOutAt: checkedOutAtMap.get(s.active_checkout_ref_id) ?? "",
+      };
+    })
+    .sort((a, b) => (a.checkedOutAt < b.checkedOutAt ? 1 : -1));
 
   const washQueue: WashQueueItem[] = (queueRows.data ?? []).map((r) => ({
     srId: r.sr_id,
@@ -110,26 +154,10 @@ export async function getScreensDashboard(): Promise<ScreensDashboard> {
 
   const neverUsedCount = (activeSrRows.data ?? []).filter((r) => r.use_count === 0).length;
 
-  const { data: reportRows } = await supabase
-    .from("sr_usage_report")
-    .select("*")
-    .order("use_count", { ascending: true })
-    .order("last_used_at", { ascending: true, nullsFirst: true })
-    .limit(20);
-  const retirementReport: RetirementReportRow[] = (reportRows ?? []).map((r) => ({
-    srId: r.sr_id,
-    srCode: r.sr_code,
-    differentiator: r.differentiator,
-    srType: r.sr_type,
-    screenNumber: r.screen_number,
-    firstShotAt: r.first_shot_at,
-    lastUsedAt: r.last_used_at,
-    useCount: r.use_count,
-  }));
-
   return {
     onFloor: onFloor.count ?? 0,
-    inProduction: inProduction.count ?? 0,
+    inProduction: inProductionList.length,
+    inProductionList,
     washQueue,
     fullyReclaimableScreens,
     washedPool: (washedRows.data ?? []).map((r) => ({
@@ -142,8 +170,34 @@ export async function getScreensDashboard(): Promise<ScreensDashboard> {
     })),
     cartCapacity: (cartRows.data ?? []).map((c) => ({ code: c.cart_code, shelfCount: c.shelf_count, occupied: c.occupied, available: c.available })),
     neverUsedCount,
-    retirementReport,
+    retirementReportCount: retirementCount.count ?? 0,
   };
+}
+
+// Full report lives on its own page (app/analytics/retirement-report) since
+// the list made the main Analytics page grow too long — no practical row
+// cap here since that page has the room for it.
+export async function getRetirementReport(): Promise<RetirementReportRow[]> {
+  await requireTech();
+  const supabase = await createSupabaseServerClient();
+
+  const { data: reportRows } = await supabase
+    .from("sr_usage_report")
+    .select("*")
+    .order("use_count", { ascending: true })
+    .order("last_used_at", { ascending: true, nullsFirst: true })
+    .limit(500);
+
+  return (reportRows ?? []).map((r) => ({
+    srId: r.sr_id,
+    srCode: r.sr_code,
+    differentiator: r.differentiator,
+    srType: r.sr_type,
+    screenNumber: r.screen_number,
+    firstShotAt: r.first_shot_at,
+    lastUsedAt: r.last_used_at,
+    useCount: r.use_count,
+  }));
 }
 
 export async function getColorsDashboard(): Promise<ColorsDashboard> {
