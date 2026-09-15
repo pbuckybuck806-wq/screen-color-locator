@@ -3,9 +3,13 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { RetirementReportRow } from "@/lib/actions/analytics";
-import { deleteSr } from "@/lib/actions/screens";
+import { deleteSr, editSr } from "@/lib/actions/screens";
 import { showToast } from "@/lib/toast";
 import { ApprovalDeletePrompt } from "@/components/ApprovalDeletePrompt";
+
+function toDateInputValue(iso: string): string {
+  return new Date(iso).toISOString().slice(0, 10);
+}
 
 const SR_TYPE_LABEL: Record<string, string> = { permanent: "Permanent", one_off: "One-off" };
 const STATUS_LABEL: Record<string, string> = { active: "Active", washed: "Washed", decommissioned: "Decommissioned" };
@@ -68,6 +72,72 @@ function RowDeleteCell({ srId, busy, onDelete }: { srId: number; busy: boolean; 
   );
 }
 
+function EditSrRow({
+  row,
+  colSpan,
+  busy,
+  onSave,
+  onCancel,
+}: {
+  row: RetirementReportRow;
+  colSpan: number;
+  busy: boolean;
+  onSave: (input: { srCode: string; differentiator?: string; srType: "permanent" | "one_off"; firstShotAt: string }) => void;
+  onCancel: () => void;
+}) {
+  const [srCode, setSrCode] = useState(row.srCode);
+  const [differentiator, setDifferentiator] = useState(row.differentiator ?? "");
+  const [srType, setSrType] = useState<"permanent" | "one_off">(row.srType);
+  const [firstShotAt, setFirstShotAt] = useState(toDateInputValue(row.firstShotAt));
+
+  function submit() {
+    if (!srCode.trim()) return;
+    onSave({ srCode, differentiator: differentiator || undefined, srType, firstShotAt: new Date(firstShotAt).toISOString() });
+  }
+
+  return (
+    <tr>
+      <td colSpan={colSpan}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", padding: "6px 0" }}>
+          <input
+            autoFocus
+            placeholder="Reference number"
+            value={srCode}
+            onChange={(e) => setSrCode(e.target.value)}
+            style={{ background: "var(--k)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--paper)", padding: "8px 10px", fontSize: 13, width: 150 }}
+          />
+          <input
+            placeholder="Differentiator"
+            value={differentiator}
+            onChange={(e) => setDifferentiator(e.target.value)}
+            style={{ background: "var(--k)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--paper)", padding: "8px 10px", fontSize: 13, width: 140 }}
+          />
+          <input
+            type="date"
+            value={firstShotAt}
+            onChange={(e) => setFirstShotAt(e.target.value)}
+            style={{ background: "var(--k)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--paper)", padding: "8px 10px", fontSize: 13, colorScheme: "dark" }}
+          />
+          <div className="mark-btns">
+            <button type="button" className={srType === "permanent" ? "active-available" : ""} onClick={() => setSrType("permanent")} style={{ padding: "7px 12px", fontSize: 12 }}>
+              Permanent
+            </button>
+            <button type="button" className={srType === "one_off" ? "active-in_use" : ""} onClick={() => setSrType("one_off")} style={{ padding: "7px 12px", fontSize: 12 }}>
+              One-off
+            </button>
+          </div>
+          <button className="btn-primary" style={{ padding: "8px 14px", fontSize: 12.5 }} disabled={busy} onClick={submit}>
+            Save
+          </button>
+          <button className="btn-ghost" style={{ padding: "8px 14px", fontSize: 12.5 }} onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 export function RetirementReportTable({ rows, isAdmin }: { rows: RetirementReportRow[]; isAdmin: boolean }) {
   const [liveRows, setLiveRows] = useState(rows);
   const [sortKey, setSortKey] = useState<SortKey>("daysSince");
@@ -79,6 +149,7 @@ export function RetirementReportTable({ rows, isAdmin }: { rows: RetirementRepor
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   function toggleSort(key: SortKey) {
     if (key === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -139,6 +210,16 @@ export function RetirementReportTable({ rows, isAdmin }: { rows: RetirementRepor
       else next.add(srId);
       return next;
     });
+  }
+
+  async function handleEditSave(srId: number, input: { srCode: string; differentiator?: string; srType: "permanent" | "one_off"; firstShotAt: string }) {
+    setBusy(true);
+    const res = await editSr(srId, input);
+    setBusy(false);
+    if (!res.ok) return showToast(res.error);
+    setLiveRows((prev) => prev.map((r) => (r.srId === srId ? { ...r, srCode: input.srCode.toUpperCase().trim(), differentiator: input.differentiator ?? null, srType: input.srType, firstShotAt: input.firstShotAt } : r)));
+    setEditingId(null);
+    showToast("Reference updated.");
   }
 
   async function handleDeleteOne(srId: number, approvalCode: string) {
@@ -273,11 +354,24 @@ export function RetirementReportTable({ rows, isAdmin }: { rows: RetirementRepor
                 <th>Last used</th>
                 <SortHeader label="Days since last used" active={sortKey === "daysSince"} dir={sortDir} onClick={() => toggleSort("daysSince")} />
                 <SortHeader label="Use count" active={sortKey === "useCount"} dir={sortDir} onClick={() => toggleSort("useCount")} />
-                {isAdmin && <th />}
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {sorted.map((r) => (
+              {sorted.map((r) => {
+                if (editingId === r.srId) {
+                  return (
+                    <EditSrRow
+                      key={r.srId}
+                      row={r}
+                      colSpan={10 + (isAdmin ? 1 : 0)}
+                      busy={busy}
+                      onSave={(input) => handleEditSave(r.srId, input)}
+                      onCancel={() => setEditingId(null)}
+                    />
+                  );
+                }
+                return (
                 <tr key={r.srId}>
                   {isAdmin && (
                     <td>
@@ -311,13 +405,19 @@ export function RetirementReportTable({ rows, isAdmin }: { rows: RetirementRepor
                   <td>{formatDate(r.lastUsedAt)}</td>
                   <td style={{ fontVariantNumeric: "tabular-nums" }}>{r.days === null ? "—" : r.days}</td>
                   <td style={{ fontVariantNumeric: "tabular-nums" }}>{r.useCount}×</td>
-                  {isAdmin && (
-                    <td>
-                      <RowDeleteCell srId={r.srId} busy={busy} onDelete={handleDeleteOne} />
-                    </td>
-                  )}
+                  <td>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {r.status === "active" && (
+                        <button className="btn-ghost" style={{ padding: "5px 10px", fontSize: 12 }} disabled={busy} onClick={() => setEditingId(r.srId)}>
+                          Edit
+                        </button>
+                      )}
+                      {isAdmin && <RowDeleteCell srId={r.srId} busy={busy} onDelete={handleDeleteOne} />}
+                    </div>
+                  </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -29,38 +29,65 @@ export default async function CartDetailPage({ params }: { params: Promise<{ car
         {!res.ok ? (
           <p style={{ color: "var(--mist)", marginTop: 24 }}>{res.error}</p>
         ) : (
-          <div className="ref-list" style={{ marginTop: 24 }}>
-            {res.data.shelves.map((s) => (
-              <div className="ref-row" key={s.shelfId} style={{ flexWrap: "wrap" }}>
-                <span className="rcode code" style={{ minWidth: 36 }}>
-                  #{s.position}
-                </span>
-                <span className="design" style={{ fontSize: 12 }}>
-                  {s.code} · {s.barcode}
-                </span>
-                {s.screenNumber != null ? (
-                  <>
-                    <span className="rcode code" style={{ color: "var(--magenta)" }}>
-                      Screen #{s.screenNumber}
-                    </span>
-                    {s.srs.length === 0 ? (
-                      <span className="design">No active references</span>
-                    ) : (
-                      s.srs.map((sr, i) => (
-                        <span key={i} className="design">
-                          {sr.code}
-                          {sr.differentiator ? ` · ${sr.differentiator}` : ""}
-                        </span>
-                      ))
-                    )}
-                  </>
-                ) : (
-                  <span className="rstate done" style={{ marginLeft: "auto" }}>
-                    Empty
-                  </span>
-                )}
-              </div>
-            ))}
+          <div className="card" style={{ marginTop: 24 }}>
+            <div style={{ overflowX: "auto" }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Slot</th>
+                    <th>Shelf</th>
+                    <th>Screen</th>
+                    <th>Active references</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {res.data.shelves.map((s) => (
+                    <tr key={s.shelfId}>
+                      <td>#{s.position}</td>
+                      <td>
+                        <span className="code">{s.code}</span>
+                        <span style={{ color: "var(--mist)", marginLeft: 8, fontSize: 12 }}>{s.barcode}</span>
+                      </td>
+                      {s.screenNumber != null ? (
+                        <>
+                          <td>
+                            <span className="rcode code" style={{ color: "var(--magenta)" }}>
+                              #{s.screenNumber}
+                            </span>
+                          </td>
+                          <td>
+                            {s.srs.length === 0 ? (
+                              <span style={{ color: "var(--mist)" }}>No active references</span>
+                            ) : (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                {s.srs.map((sr, i) => (
+                                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <span className="rcode code" style={{ color: "var(--yellow)" }}>
+                                      {sr.code}
+                                    </span>
+                                    {sr.differentiator && (
+                                      <span
+                                        style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 6, background: "var(--line-2)", color: "var(--paper)" }}
+                                      >
+                                        {sr.differentiator}
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                        </>
+                      ) : (
+                        <td colSpan={2} style={{ color: "var(--good)" }}>
+                          Empty
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
