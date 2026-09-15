@@ -14,6 +14,7 @@ import {
   deleteScreen,
   lookupScreenByNumber,
   placeScreenByBarcode,
+  editSr,
 } from "@/lib/actions/screens";
 import { searchColorByPms, markBucketStatus, addInk, weighBucket } from "@/lib/actions/paint";
 import { showToast } from "@/lib/toast";
@@ -165,6 +166,20 @@ export function LocatorApp({
       if (res.data) setStage({ kind: "screen", data: res.data, highlightSrId });
       showToast("Queued for wash.");
     }
+  }
+
+  async function handleEditSr(
+    srId: number,
+    input: { srCode: string; differentiator?: string; designName?: string; srType: "permanent" | "one_off"; firstShotAt: string },
+  ) {
+    if (stage.kind !== "screen") return;
+    const highlightSrId = stage.highlightSrId;
+    setBusy(true);
+    const res = await editSr(srId, input);
+    setBusy(false);
+    if (!res.ok) return showToast(res.error);
+    if (res.data) setStage({ kind: "screen", data: res.data, highlightSrId });
+    showToast("Reference updated.");
   }
 
   async function handleDeleteSr(srId: number, approvalCode: string) {
@@ -364,6 +379,7 @@ export function LocatorApp({
                 onDeleteSr={handleDeleteSr}
                 onDeleteScreen={handleDeleteScreen}
                 onMoveShelf={handleMoveShelf}
+                onEditSr={handleEditSr}
                 busy={busy}
               />
             </>

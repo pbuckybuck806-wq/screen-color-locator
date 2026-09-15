@@ -90,6 +90,22 @@ export type CartWithShelves = {
   shelves: ShelfRow[];
 };
 
+export type CartDetailShelf = {
+  shelfId: number;
+  position: number;
+  code: string;
+  barcode: string;
+  screenNumber: number | null;
+  srs: { code: string; differentiator: string | null }[];
+};
+
+export type CartDetail = {
+  cartCode: string;
+  shelfCount: number;
+  occupied: number;
+  shelves: CartDetailShelf[];
+};
+
 export type SettingsData = {
   unit: string;
   inkFreshnessMonths: number;

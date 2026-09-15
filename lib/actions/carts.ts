@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { ActionResult, CartWithShelves } from "@/lib/types";
+import { requireTech } from "@/lib/auth";
+import type { ActionResult, CartDetail, CartDetailShelf, CartWithShelves } from "@/lib/types";
 
 export async function logCart(code: string, shelfCount: number): Promise<ActionResult<{ cartId: number }>> {
   const supabase = await createSupabaseServerClient();
@@ -35,6 +36,70 @@ export async function listCartsWithShelves(): Promise<ActionResult<CartWithShelv
   }
 
   return { ok: true, data: Array.from(carts.values()) };
+}
+
+// Read-only "what's actually in this cart" view — screen number + active SR
+// codes per occupied shelf. Separate from listCartsWithShelves (which powers
+// Manage Carts' editing UI) since this needs heavier per-shelf lookups that
+// the editing screen doesn't.
+export async function getCartDetail(cartCode: string): Promise<ActionResult<CartDetail>> {
+  await requireTech();
+  const supabase = await createSupabaseServerClient();
+
+  const { data: cart } = await supabase.from("carts").select("id, code, shelf_count").eq("code", cartCode).maybeSingle();
+  if (!cart) return { ok: false, error: "Cart not found." };
+
+  const { data: shelfRows } = await supabase.from("shelves").select("id, position, code, barcode").eq("cart_id", cart.id).order("position");
+
+  const shelfIds = (shelfRows ?? []).map((s) => s.id);
+  const { data: placementRows } = await supabase
+    .from("placements")
+    .select("shelf_id, screen_id, screens(screen_number)")
+    .in("shelf_id", shelfIds.length ? shelfIds : [-1])
+    .is("removed_at", null);
+
+  const screenByShelf = new Map(
+    (placementRows ?? []).map((p) => [
+      p.shelf_id,
+      { screenId: p.screen_id, screenNumber: (p.screens as unknown as { screen_number: number } | null)?.screen_number ?? null },
+    ]),
+  );
+
+  const screenIds = [...screenByShelf.values()].map((v) => v.screenId).filter((id): id is number => id != null);
+  const { data: srRows } = await supabase
+    .from("separation_references")
+    .select("screen_id, sr_code, differentiator")
+    .in("screen_id", screenIds.length ? screenIds : [-1])
+    .eq("status", "active");
+
+  const srsByScreen = new Map<number, { code: string; differentiator: string | null }[]>();
+  for (const r of srRows ?? []) {
+    const list = srsByScreen.get(r.screen_id) ?? [];
+    list.push({ code: r.sr_code, differentiator: r.differentiator });
+    srsByScreen.set(r.screen_id, list);
+  }
+
+  const shelves: CartDetailShelf[] = (shelfRows ?? []).map((s) => {
+    const occ = screenByShelf.get(s.id);
+    return {
+      shelfId: s.id,
+      position: s.position,
+      code: s.code,
+      barcode: s.barcode,
+      screenNumber: occ?.screenNumber ?? null,
+      srs: occ?.screenId != null ? (srsByScreen.get(occ.screenId) ?? []) : [],
+    };
+  });
+
+  return {
+    ok: true,
+    data: {
+      cartCode: cart.code,
+      shelfCount: cart.shelf_count,
+      occupied: shelves.filter((s) => s.screenNumber != null).length,
+      shelves,
+    },
+  };
 }
 
 export async function editCartShelfCount(cartId: number, newShelfCount: number): Promise<ActionResult<{ saved: true }>> {

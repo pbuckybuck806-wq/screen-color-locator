@@ -169,10 +169,15 @@ export function AnalyticsDashboards({
               {screens.cartCapacity.map((c) => {
                 const pct = c.shelfCount > 0 ? Math.round((c.occupied / c.shelfCount) * 100) : 0;
                 return (
-                  <div className="cart-cell" key={c.code} title={`Cart ${c.code}: ${c.occupied}/${c.shelfCount} occupied`}>
+                  <Link
+                    href={`/analytics/carts/${c.code}`}
+                    className="cart-cell"
+                    key={c.code}
+                    title={`Cart ${c.code}: ${c.occupied}/${c.shelfCount} occupied — click for details`}
+                  >
                     <div className="fill" style={{ height: barsIn ? `${pct}%` : "0%" }} />
                     <span>{c.code}</span>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

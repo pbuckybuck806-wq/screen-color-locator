@@ -206,6 +206,29 @@ export async function washSr(
   return { ok: true, data: state };
 }
 
+export async function editSr(
+  srId: number,
+  input: { srCode: string; differentiator?: string; designName?: string; srType: SrType; firstShotAt: string },
+): Promise<ActionResult<ScreenSearchResult | null>> {
+  const supabase = await createSupabaseServerClient();
+
+  const { data: sr } = await supabase.from("separation_references").select("screen_id").eq("id", srId).maybeSingle();
+
+  const { error } = await supabase.rpc("rpc_edit_sr", {
+    p_sr_id: srId,
+    p_sr_code: input.srCode,
+    p_differentiator: input.differentiator ?? null,
+    p_design_name: input.designName ?? null,
+    p_sr_type: input.srType,
+    p_first_shot_at: input.firstShotAt,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/", "layout");
+  const state = sr?.screen_id ? await loadScreenState(supabase, sr.screen_id) : null;
+  return { ok: true, data: state };
+}
+
 export async function decommissionAndReassignScreen(
   damagedScreenNumber: number,
   targetScreenNumber: number,

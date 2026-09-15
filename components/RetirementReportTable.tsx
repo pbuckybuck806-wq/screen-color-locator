@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import type { RetirementReportRow } from "@/lib/actions/analytics";
 import { deleteSr } from "@/lib/actions/screens";
 import { showToast } from "@/lib/toast";
@@ -74,6 +75,7 @@ export function RetirementReportTable({ rows, isAdmin }: { rows: RetirementRepor
   const [typeFilter, setTypeFilter] = useState<"all" | "permanent" | "one_off">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "washed" | "decommissioned">("all");
   const [lastUsedFilter, setLastUsedFilter] = useState<LastUsedBucket>("all");
+  const [cartFilter, setCartFilter] = useState<string>("all");
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -88,12 +90,18 @@ export function RetirementReportTable({ rows, isAdmin }: { rows: RetirementRepor
 
   const decorated = useMemo(() => liveRows.map((r) => ({ ...r, days: daysSince(r.lastUsedAt) })), [liveRows]);
 
+  const cartOptions = useMemo(() => [...new Set(liveRows.map((r) => r.cartCode).filter((c): c is string => c != null))].sort(), [liveRows]);
+
   const filtered = useMemo(
     () =>
       decorated.filter(
-        (r) => (typeFilter === "all" || r.srType === typeFilter) && (statusFilter === "all" || r.status === statusFilter) && inBucket(r.days, lastUsedFilter),
+        (r) =>
+          (typeFilter === "all" || r.srType === typeFilter) &&
+          (statusFilter === "all" || r.status === statusFilter) &&
+          inBucket(r.days, lastUsedFilter) &&
+          (cartFilter === "all" || (cartFilter === "none" ? r.cartCode == null : r.cartCode === cartFilter)),
       ),
-    [decorated, typeFilter, statusFilter, lastUsedFilter],
+    [decorated, typeFilter, statusFilter, lastUsedFilter, cartFilter],
   );
 
   const sorted = useMemo(() => {
@@ -197,6 +205,22 @@ export function RetirementReportTable({ rows, isAdmin }: { rows: RetirementRepor
           </select>
         </label>
         <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11.5, color: "var(--mist)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
+          Cart
+          <select
+            value={cartFilter}
+            onChange={(e) => setCartFilter(e.target.value)}
+            style={{ background: "var(--k)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--paper)", padding: "8px 10px", fontSize: 13 }}
+          >
+            <option value="all">All</option>
+            <option value="none">Not on a shelf</option>
+            {cartOptions.map((c) => (
+              <option key={c} value={c}>
+                Cart {c}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11.5, color: "var(--mist)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
           Last used
           <select
             value={lastUsedFilter}
@@ -242,6 +266,7 @@ export function RetirementReportTable({ rows, isAdmin }: { rows: RetirementRepor
                 )}
                 <th>Reference</th>
                 <th>Screen</th>
+                <th>Cart</th>
                 <th>Status</th>
                 <th>Type</th>
                 <SortHeader label="First shot" active={sortKey === "firstShotAt"} dir={sortDir} onClick={() => toggleSort("firstShotAt")} />
@@ -270,6 +295,16 @@ export function RetirementReportTable({ rows, isAdmin }: { rows: RetirementRepor
                     )}
                   </td>
                   <td>{r.screenNumber != null ? `#${r.screenNumber}` : "—"}</td>
+                  <td>
+                    {r.cartCode ? (
+                      <Link href={`/analytics/carts/${r.cartCode}`} style={{ color: "var(--cyan)" }}>
+                        {r.cartCode}
+                        {r.shelfCode ? ` · ${r.shelfCode}` : ""}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td style={{ color: STATUS_COLOR[r.status] }}>{STATUS_LABEL[r.status]}</td>
                   <td>{SR_TYPE_LABEL[r.srType]}</td>
                   <td>{formatDate(r.firstShotAt)}</td>

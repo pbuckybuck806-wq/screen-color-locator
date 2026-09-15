@@ -10,11 +10,90 @@ function formatDate(iso: string | null) {
   return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
+function toDateInputValue(iso: string): string {
+  return new Date(iso).toISOString().slice(0, 10);
+}
+
 const WASH_REASON_LABEL: Record<string, string> = {
   one_off_returned: "Due · one-off returned",
   manual_request: "Due · requested",
   stale_permanent: "Due · stale",
 };
+
+function SrEditForm({
+  sr,
+  busy,
+  onSave,
+  onCancel,
+}: {
+  sr: SrRow;
+  busy: boolean;
+  onSave: (input: { srCode: string; differentiator?: string; designName?: string; srType: "permanent" | "one_off"; firstShotAt: string }) => void;
+  onCancel: () => void;
+}) {
+  const [srCode, setSrCode] = useState(sr.code);
+  const [differentiator, setDifferentiator] = useState(sr.differentiator ?? "");
+  const [designName, setDesignName] = useState(sr.design ?? "");
+  const [srType, setSrType] = useState<"permanent" | "one_off">(sr.srType);
+  const [firstShotAt, setFirstShotAt] = useState(toDateInputValue(sr.firstShotAt));
+
+  function submit() {
+    if (!srCode.trim()) return;
+    onSave({
+      srCode,
+      differentiator: differentiator || undefined,
+      designName: designName || undefined,
+      srType,
+      firstShotAt: new Date(firstShotAt).toISOString(),
+    });
+  }
+
+  return (
+    <div className="ref-row" style={{ flexWrap: "wrap", border: "1px solid var(--cyan)" }}>
+      <input
+        autoFocus
+        placeholder="Reference number"
+        value={srCode}
+        onChange={(e) => setSrCode(e.target.value)}
+        style={{ background: "transparent", border: "none", color: "var(--paper)", fontWeight: 600, flex: "1 1 140px" }}
+      />
+      <input
+        placeholder="Differentiator"
+        value={differentiator}
+        onChange={(e) => setDifferentiator(e.target.value)}
+        style={{ background: "transparent", border: "none", color: "var(--mist)", flex: "1 1 140px" }}
+      />
+      <input
+        placeholder="Design name"
+        value={designName}
+        onChange={(e) => setDesignName(e.target.value)}
+        style={{ background: "transparent", border: "none", color: "var(--mist)", flex: "1 1 140px" }}
+      />
+      <input
+        type="date"
+        value={firstShotAt}
+        onChange={(e) => setFirstShotAt(e.target.value)}
+        style={{ background: "var(--k)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--paper)", padding: "8px 10px", fontSize: 13, colorScheme: "dark" }}
+      />
+      <div className="mark-btns" style={{ width: "100%" }}>
+        <button type="button" className={srType === "permanent" ? "active-available" : ""} onClick={() => setSrType("permanent")} style={{ padding: "8px 14px", fontSize: 12.5 }}>
+          Permanent
+        </button>
+        <button type="button" className={srType === "one_off" ? "active-in_use" : ""} onClick={() => setSrType("one_off")} style={{ padding: "8px 14px", fontSize: 12.5 }}>
+          One-off
+        </button>
+      </div>
+      <div style={{ display: "flex", gap: 8, width: "100%" }}>
+        <button className="btn-primary" style={{ padding: "8px 14px", fontSize: 12.5 }} disabled={busy} onClick={submit}>
+          Save changes
+        </button>
+        <button className="btn-ghost" style={{ padding: "8px 14px", fontSize: 12.5 }} onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function SrRowActions({
   sr,
@@ -25,6 +104,7 @@ function SrRowActions({
   onWashSr,
   onRequestWash,
   onDeleteSr,
+  onStartEdit,
 }: {
   sr: SrRow;
   screenBusy: boolean;
@@ -34,6 +114,7 @@ function SrRowActions({
   onWashSr: (srId: number, tag: "washed" | "decommissioned", destinationShelf: string, reason?: string) => void;
   onRequestWash: (srId: number) => void;
   onDeleteSr: (srId: number, approvalCode: string) => void;
+  onStartEdit: () => void;
 }) {
   const [washing, setWashing] = useState(false);
   const [reason, setReason] = useState("");
@@ -102,6 +183,11 @@ function SrRowActions({
           Wash
         </button>
       )}
+      {isTech && (
+        <button className="btn-ghost" style={{ padding: "6px 12px", fontSize: 12.5 }} disabled={screenBusy} onClick={onStartEdit}>
+          Edit
+        </button>
+      )}
       {isAdmin && (
         <button
           className="btn-ghost"
@@ -128,6 +214,7 @@ export function ScreenResultCard({
   onDeleteSr,
   onDeleteScreen,
   onMoveShelf,
+  onEditSr,
   busy,
 }: {
   result: ScreenSearchResult;
@@ -146,6 +233,7 @@ export function ScreenResultCard({
   onDeleteSr: (srId: number, approvalCode: string) => void;
   onDeleteScreen: (approvalCode: string) => void;
   onMoveShelf: (barcode: string) => void;
+  onEditSr: (srId: number, input: { srCode: string; differentiator?: string; designName?: string; srType: "permanent" | "one_off"; firstShotAt: string }) => void;
   busy: boolean;
 }) {
   const [scanning, setScanning] = useState(false);
@@ -153,6 +241,7 @@ export function ScreenResultCard({
   const [deletingScreen, setDeletingScreen] = useState(false);
   const [moving, setMoving] = useState(false);
   const [moveValue, setMoveValue] = useState("");
+  const [editingSrId, setEditingSrId] = useState<number | null>(null);
 
   const cardClass = result.status === "in_production" ? "prod" : "avail";
   const tagLabel = result.status === "in_production" ? "● In production" : "● On shelf";
@@ -201,6 +290,20 @@ export function ScreenResultCard({
         <div className="ref-list">
           {result.srs.length === 0 && <p style={{ color: "var(--mist)", fontSize: 13.5 }}>No active references on this screen.</p>}
           {result.srs.map((sr) => {
+            if (sr.id === editingSrId) {
+              return (
+                <SrEditForm
+                  key={sr.id}
+                  sr={sr}
+                  busy={busy}
+                  onCancel={() => setEditingSrId(null)}
+                  onSave={(input) => {
+                    onEditSr(sr.id, input);
+                    setEditingSrId(null);
+                  }}
+                />
+              );
+            }
             const dimmed = highlightSrId != null && sr.id !== highlightSrId;
             return (
             <div className="ref-row" key={sr.id} style={{ flexWrap: "wrap", opacity: dimmed ? 0.45 : 1, borderColor: dimmed ? undefined : highlightSrId === sr.id ? "var(--cyan)" : undefined }}>
@@ -227,6 +330,7 @@ export function ScreenResultCard({
                 onWashSr={onWashSr}
                 onRequestWash={onRequestWash}
                 onDeleteSr={onDeleteSr}
+                onStartEdit={() => setEditingSrId(sr.id)}
               />
             </div>
             );

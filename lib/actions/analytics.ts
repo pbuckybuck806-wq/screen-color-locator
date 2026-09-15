@@ -32,6 +32,8 @@ export type RetirementReportRow = {
   srType: SrType;
   status: SrStatus;
   screenNumber: number | null;
+  cartCode: string | null;
+  shelfCode: string | null;
   firstShotAt: string;
   lastUsedAt: string | null;
   useCount: number;
@@ -196,6 +198,8 @@ export async function getRetirementReport(): Promise<RetirementReportRow[]> {
     srType: r.sr_type,
     status: r.status,
     screenNumber: r.screen_number,
+    cartCode: r.cart_code,
+    shelfCode: r.shelf_code,
     firstShotAt: r.first_shot_at,
     lastUsedAt: r.last_used_at,
     useCount: r.use_count,
