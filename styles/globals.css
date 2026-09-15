@@ -62,6 +62,7 @@ body.pulse .ambient { filter: brightness(1.4) saturate(1.15); }
 .view { position: relative; z-index: 2; animation: viewIn .5s ease; }
 @keyframes viewIn { from { opacity: 0; transform: translateY(8px);} to {opacity:1; transform:none;} }
 .wrap { max-width: 1120px; margin: 0 auto; padding: 40px 22px 90px; }
+.wrap.wide { max-width: 1680px; }
 .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; color: var(--cyan); margin: 0 0 12px; }
 h1.title { font-family: var(--font-display); font-weight: 800; line-height: .98; margin: 0; letter-spacing: -1px; }
 
@@ -267,6 +268,8 @@ h1.title { font-family: var(--font-display); font-weight: 800; line-height: .98;
 .data-table td { padding: 13px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .data-table tr:hover td { background: rgba(255,255,255,.03); }
 .data-table tr:last-child td { border-bottom: none; }
+.data-table .sticky-left { position: sticky; left: 0; background: var(--k); z-index: 1; }
+.data-table .sticky-right { position: sticky; right: 0; background: var(--k); z-index: 1; }
 .refill-list { display: flex; flex-direction: column; gap: 9px; }
 .refill-item { display: flex; align-items: center; gap: 13px; background: var(--k); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
 .refill-item .sw { width: 34px; height: 34px; border-radius: 8px; flex: none; border: 1px solid rgba(255,255,255,.12); }

@@ -345,7 +345,7 @@ export function RetirementReportTable({ rows, isAdmin }: { rows: RetirementRepor
                     <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} />
                   </th>
                 )}
-                <th>Reference</th>
+                <th className="sticky-left">Reference</th>
                 <th>Screen</th>
                 <th>Cart</th>
                 <th>Status</th>
@@ -354,7 +354,7 @@ export function RetirementReportTable({ rows, isAdmin }: { rows: RetirementRepor
                 <th>Last used</th>
                 <SortHeader label="Days since last used" active={sortKey === "daysSince"} dir={sortDir} onClick={() => toggleSort("daysSince")} />
                 <SortHeader label="Use count" active={sortKey === "useCount"} dir={sortDir} onClick={() => toggleSort("useCount")} />
-                <th>Actions</th>
+                <th className="sticky-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -378,7 +378,7 @@ export function RetirementReportTable({ rows, isAdmin }: { rows: RetirementRepor
                       <input type="checkbox" checked={selected.has(r.srId)} onChange={() => toggleRow(r.srId)} />
                     </td>
                   )}
-                  <td>
+                  <td className="sticky-left">
                     <span className="rcode code" style={{ color: "var(--yellow)" }}>
                       {r.srCode}
                     </span>
@@ -405,7 +405,7 @@ export function RetirementReportTable({ rows, isAdmin }: { rows: RetirementRepor
                   <td>{formatDate(r.lastUsedAt)}</td>
                   <td style={{ fontVariantNumeric: "tabular-nums" }}>{r.days === null ? "—" : r.days}</td>
                   <td style={{ fontVariantNumeric: "tabular-nums" }}>{r.useCount}×</td>
-                  <td>
+                  <td className="sticky-right">
                     <div style={{ display: "flex", gap: 8 }}>
                       {r.status === "active" && (
                         <button className="btn-ghost" style={{ padding: "5px 10px", fontSize: 12 }} disabled={busy} onClick={() => setEditingId(r.srId)}>

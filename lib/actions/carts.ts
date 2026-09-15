@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireTech } from "@/lib/auth";
-import type { ActionResult, CartDetail, CartDetailShelf, CartWithShelves } from "@/lib/types";
+import type { ActionResult, CartDetail, CartDetailShelf, CartDetailSr, CartWithShelves } from "@/lib/types";
 
 export async function logCart(code: string, shelfCount: number): Promise<ActionResult<{ cartId: number }>> {
   const supabase = await createSupabaseServerClient();
@@ -68,14 +68,14 @@ export async function getCartDetail(cartCode: string): Promise<ActionResult<Cart
   const screenIds = [...screenByShelf.values()].map((v) => v.screenId).filter((id): id is number => id != null);
   const { data: srRows } = await supabase
     .from("separation_references")
-    .select("screen_id, sr_code, differentiator")
+    .select("id, screen_id, sr_code, differentiator, sr_type, first_shot_at")
     .in("screen_id", screenIds.length ? screenIds : [-1])
     .eq("status", "active");
 
-  const srsByScreen = new Map<number, { code: string; differentiator: string | null }[]>();
+  const srsByScreen = new Map<number, CartDetailSr[]>();
   for (const r of srRows ?? []) {
     const list = srsByScreen.get(r.screen_id) ?? [];
-    list.push({ code: r.sr_code, differentiator: r.differentiator });
+    list.push({ srId: r.id, code: r.sr_code, differentiator: r.differentiator, srType: r.sr_type, firstShotAt: r.first_shot_at });
     srsByScreen.set(r.screen_id, list);
   }
 

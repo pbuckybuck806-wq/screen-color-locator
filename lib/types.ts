@@ -90,13 +90,21 @@ export type CartWithShelves = {
   shelves: ShelfRow[];
 };
 
+export type CartDetailSr = {
+  srId: number;
+  code: string;
+  differentiator: string | null;
+  srType: SrType;
+  firstShotAt: string;
+};
+
 export type CartDetailShelf = {
   shelfId: number;
   position: number;
   code: string;
   barcode: string;
   screenNumber: number | null;
-  srs: { code: string; differentiator: string | null }[];
+  srs: CartDetailSr[];
 };
 
 export type CartDetail = {

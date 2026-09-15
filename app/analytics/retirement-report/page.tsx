@@ -9,7 +9,7 @@ export default async function RetirementReportPage() {
 
   return (
     <section className="view">
-      <div className="wrap">
+      <div className="wrap wide">
         <div className="loc-head">
           <div>
             <p className="eyebrow">
